@@ -254,6 +254,7 @@ const TXT = {
     endGameAsk: w=>`${w}をすると盤面がいっぱいになり、ゲームが終わります。続けますか?`,
     confirm: 'ここまでのスコアをランキングに記録して、盤面を捨てます。ステージ選択に戻ります。',
     nameMsg: 'ランキングに載せる名前を入力してください（8文字まで）。',
+    preRelease: 'リリース前なので登録できません',
     helpHtml: `<h4>遊び方</h4><ul>
     <li>同じ種類・同じ数字の建物をつなぐと、1つ上のレベルになります。</li>
     <li>建物を選んで、つなぎたい相手を選びます。曲がるのは1回まで、相手の隣まで移動できればつながります。</li>
@@ -290,6 +291,7 @@ const TXT = {
     endGameAsk: w=>`${w} will fill the board and end the game. Continue?`,
     confirm: 'Your score so far will be recorded in the ranking and the board will be discarded. You will return to stage select.',
     nameMsg: 'Enter a name for the ranking (up to 8 characters).',
+    preRelease: "Registration isn't available before release",
     helpHtml: `<h4>Rules</h4><ul>
     <li>Connect buildings of the same type and number to make one a level higher.</li>
     <li>Pick a building, then pick its partner. They connect if you can reach a cell next to the partner along free roads and land, turning at most once.</li>
@@ -856,12 +858,14 @@ const LB2_URL = (DEV && new URLSearchParams(location.search).get('lb2')) || 'htt
 const LB_URLS = [LB2_URL].filter(Boolean);
 const NAME_KEY='osaka-name', UID_KEY='osaka-uid';
 let lastEntry=null, nameSkipped=false, nameDone=null;
+const TEST_NAME='DAISUQE';                          // リリース前のテスト: この名前でしか、ランキングに登録できない(リリース時は null にして、制限をなくす)
+const nameAllowed = n => !TEST_NAME || String(n||'').toUpperCase()===TEST_NAME;
 function getUid(){ let u=''; try{ u=localStorage.getItem(UID_KEY)||''; if(!u){ u=Math.random().toString(36).slice(2,10); localStorage.setItem(UID_KEY,u); } }catch(_){ u='anon'; } return u; }
 function playerName(){ try{ return (localStorage.getItem(NAME_KEY)||'').slice(0,8); }catch(_){ return ''; } }
 const LBBEST_KEY='osaka-lbbest';                    // ステージごとに、みんなのランキングへ登録済みのハイスコア
 function lbBest(){ try{ return JSON.parse(localStorage.getItem(LBBEST_KEY)||'{}')||{}; }catch(_){ return {}; } }
-function askName(cb){                                 // ニックネームを聞く(最大8文字)。一度入れたら覚える
-  $('nameInput').value=playerName(); nameDone=cb; $('namePanel').style.display='flex'; setTimeout(()=>$('nameInput').focus(),50);
+function askName(cb,warn){                            // ニックネームを聞く(最大8文字)。一度入れたら覚える。warn: 登録できない名前だったとき、その理由を出す
+  $('nameInput').value=playerName(); nameDone=cb; $('nameMsg').textContent=tr(warn?'preRelease':'nameMsg'); $('namePanel').style.display='flex'; setTimeout(()=>$('nameInput').focus(),50);
 }
 function postScore(name){                             // 返事は待たない(ページを離れても届くよう keepalive)
   const body=JSON.stringify({stage:MAPID||'osakastation', name, score:lastEntry.s, level:lastEntry.lv, id:getUid()});
@@ -872,8 +876,8 @@ function shareScore(done){                            // 今のゲームの成�
   if(!LB_URLS.length || PREVIEW || !lastEntry){ if(done) done(); return; }
   const prev=lbBest()[MAPID||'osakastation'];
   if(prev && lastEntry.s<=prev.s){ if(done) done(); return; }
-  const go=()=>{ const n=playerName(); if(n) postScore(n); if(done) done(); };
-  const send=()=>{ if(!playerName() && !nameSkipped) askName(go); else go(); };
+  const go=()=>{ const n=playerName(); if(n && nameAllowed(n)) postScore(n); if(done) done(); };        // 登録できない名前は、送らない
+  const send=()=>{ const n=playerName(); if(!n && !nameSkipped) askName(go); else if(n && !nameAllowed(n) && !nameSkipped) askName(go,true); else go(); };
   if(prev) askQuery('High Score!',tr('highScore',lastEntry.s,prev.s,MAPS[MAPID||'osakastation'].title),send,()=>{ if(done) done(); });
   else send();
 }
@@ -2904,7 +2908,9 @@ $('newYes').onclick = () => {                         // 今のステージの�
   });
 };
 $('nameSave').onclick = () => {
-  const v=$('nameInput').value.replace(/[<>&"']/g,'').trim().slice(0,8);
+  let v=$('nameInput').value.replace(/[<>&"']/g,'').trim().slice(0,8);
+  if(v && !nameAllowed(v)){ $('nameMsg').textContent=tr('preRelease'); sfxError(); return; }     // 他の名前は、リリース前なので登録できない(ダイアログは閉じない)
+  if(v && TEST_NAME) v=TEST_NAME;                                                                   // 大文字にそろえる
   if(v){ try{ localStorage.setItem(NAME_KEY,v); }catch(_){} }
   $('namePanel').style.display='none'; const f=nameDone; nameDone=null; if(f) f(); if($('rankPanel').style.display==='flex') refreshRank();
 };

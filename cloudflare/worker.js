@@ -5,6 +5,7 @@
  * 使い方は cloudflare/README.md を見てください。
  */
 const STAGES = ['osakastation', 'namba', 'tsutenkaku', 'tempozan', 'minato', 'chinatown'];   // ゲーム側のステージIDと同じ
+const TEST_NAME = 'DAISUQE';   // リリース前のテスト: この名前でしか登録できない。リリース時は null にする
 const TOP_N = 100, MAX_SCORE = 1e11, MAX_LEVEL = 30, NAME_MAX = 8;
 
 const CORS = {
@@ -36,6 +37,7 @@ export default {
       const stage = String(d.stage || ''), name = cleanName(d.name), id = String(d.id || '').slice(0, 40);
       const score = Math.floor(Number(d.score)), level = Math.floor(Number(d.level));
       if (!STAGES.includes(stage) || !name || !id) return json({ ok: false, error: 'bad request' }, 400);
+      if (TEST_NAME && name.toUpperCase() !== TEST_NAME) return json({ ok: false, error: 'pre-release' }, 403);
       if (!(score >= 0 && score <= MAX_SCORE) || !(level >= 1 && level <= MAX_LEVEL)) return json({ ok: false, error: 'bad value' }, 400);
       // 同じ人・同じステージは1件だけ。今より高いスコアのときだけ更新する(名前は、最新のものにそろえる)
       await env.DB.prepare(
