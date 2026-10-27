@@ -256,15 +256,11 @@ const TXT = {
     nameMsg: 'ランキングに載せる名前を入力してください（8文字まで）。',
     preRelease: 'リリース前なので登録できません',
     helpHtml: `<h4>遊び方</h4><ul>
-    <li>同じ種類・同じ数字の建物をつなぐと、1つ上のレベルになります。</li>
-    <li>建物を選んで、つなぎたい相手を選びます。曲がるのは1回まで、相手の隣まで移動できればつながります。</li>
-    <li>選び直すときは、地面や盤の外をクリック、右クリック、Esc。スマホは、相手を1回タップで確認、もう一度タップで決定です。</li>
-    <li>1つつなぐごとに新築が1件増えます（建物の数は変わりません）。種類はランダムです。</li>
-    <li>つなげる組み合わせがなくなったら Pass。Undo・Hint・Pass は、ボタンの数字の分だけ新築が増えます。</li>
-    <li>大きな建物を作ると、小さな建物が消えます。128以上を作ると「1」の建物が、盤面からまとめて消えます。1024は最大で、それ以上は合体できません。</li>
+    <li>同じ種類・同じ数字の建物をつなぐと、合計した数字になります。建物を選んで、つなぎたい相手を選びます（曲がるのは1回まで、相手の隣まで移動できればつながります）。選び直すときは、地面や盤の外をクリック、右クリック、Esc。スマホは、相手を1回タップで確認、もう一度タップで決定です。</li>
+    <li>1つつなぐごとに新築が1件増えます（建物の数は変わりません）。つなげる組み合わせがなくなったら Pass。Undo・Hint・Pass は、ボタンの数字の分だけ新築が増えます。</li>
+    <li>1024は最大の建物です。1024を作ると、「1」と「2」の建物が、盤面からまとめて消えます。1024は、それ以上は合体できません。</li>
     <li>できた建物の数字に応じて、点数が入ります。数字が1段階大きくなるごとに、1回の点数は4倍になります（2を作ると10点、4で40点、8で160点、16で640点…）。大きな建物を作るほど、点数が一気に増えます。</li>
-    <li>更地がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。スコアをタップすると内訳が見られます。</li>
-    <li>1ターンごとにデータを保存しています。ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます。途中データはステージ毎に保存されています。</li>
+    <li>更地がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。スコアをタップすると内訳が見られます。データは1ターンごとに保存されるので、ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます（途中データはステージごとに保存されます）。</li>
   </ul>`,
   },
   en: {
@@ -293,15 +289,11 @@ const TXT = {
     nameMsg: 'Enter a name for the ranking (up to 8 characters).',
     preRelease: "Registration isn't available before release",
     helpHtml: `<h4>Rules</h4><ul>
-    <li>Connect buildings of the same type and number to make one a level higher.</li>
-    <li>Pick a building, then pick its partner. They connect if you can reach a cell next to the partner along free roads and land, turning at most once.</li>
-    <li>To deselect, click the ground or outside the board, right-click, or press Esc. On a phone, tap the partner once to preview and tap again to confirm.</li>
-    <li>Every merge adds one new building (the number of buildings stays the same). Its type is random.</li>
-    <li>When no merges are left, use Pass. Undo, Hint and Pass add as many new buildings as the number on the button.</li>
-    <li>Making a big building erases small ones. Making a 128 or bigger erases all the 1s from the whole board. 1024 is the top level and can't be merged further.</li>
+    <li>Connect buildings of the same type and number to add them up into one building with the total number. Pick a building, then pick its partner: they connect if you can reach a cell next to the partner along free roads and land, turning at most once. To deselect, click the ground or outside the board, right-click, or press Esc. On a phone, tap the partner once to preview and tap again to confirm.</li>
+    <li>Every merge adds one new building (the number of buildings stays the same). When no merges are left, use Pass. Undo, Hint and Pass add as many new buildings as the number on the button.</li>
+    <li>1024 is the biggest building. Making a 1024 erases all the 1s and 2s from the whole board. A 1024 can't be merged any further.</li>
     <li>Each merge scores points based on the building you make. Every step up multiplies the points by 4 (making a 2 scores 10, a 4 scores 40, an 8 scores 160, a 16 scores 640…). The bigger the building, the more points you get.</li>
-    <li>When no empty land is left, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Tap the score to see the breakdown.</li>
-    <li>Your progress is saved every turn. You can close the browser, or return to the title screen with Save &amp; Exit, and resume later. Saved progress is kept separately for each stage.</li>
+    <li>When no empty land is left, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Tap the score to see the breakdown. Your progress is saved every turn, so you can close the browser, or return to the title screen with Save &amp; Exit, and resume later (saved separately for each stage).</li>
   </ul>`,
   },
 };
@@ -555,12 +547,16 @@ const $ = id => document.getElementById(id);
 
 // 最初の配置は数字1か2だけ(1:2 の割合は新築の確率に合わせる)
 function randInit(){ return Math.random() < LV_PROB[0]/(LV_PROB[0]+LV_PROB[1]) ? 1 : 2; }
-function randVal(){                    // 新築の数字。進み具合(今までで一番大きい数字 bestValue)に応じて、2つの段階に分ける
+const P8 = {64:.15, 128:.25, 256:.38, 512:.5};     // 今までで一番大きい数字 → 新築で数字8が出る確率(512以上は5割)
+function randVal(){                    // 新築の数字。進み具合(今までで一番大きい数字 bestValue)が大きいほど、数字8が出やすくなる
   const r=Math.random();
-  if(bestValue>=64){                   // 2段階目: 数字8も出る。1もずっと出る(128以上でも同じ)
-    return r<.30 ? 1 : r<.60 ? 2 : r<.85 ? 4 : 8;
+  if(bestValue>=1024) return r<.05 ? 1 : r<.25 ? 2 : r<.50 ? 4 : 8;     // 1024を作ったあと: 1は5%、2は20%、4は25%、8は50%
+  if(bestValue>=64){
+    const p8=P8[Math.min(bestValue,512)]||.5, rest=(1-p8)/.85;      // 残りは、1:2:4 = 30:30:25 の割合で分ける
+    return r<p8 ? 8 : (r-p8)<.30*rest ? 1 : (r-p8)<.60*rest ? 2 : 4;
   }
-  return r<LV_PROB[0] ? 1 : r<LV_PROB[0]+LV_PROB[1] ? 2 : 4;      // 1段階目: 1, 2, 4 (45%, 35%, 20%)
+  const p8=.03, rest=1-p8;               // 64未満: 8も、少しだけ(3%)出る。残りは、1:2:4 = 45:35:20
+  return r<p8 ? 8 : (r-p8)<LV_PROB[0]*rest ? 1 : (r-p8)<(LV_PROB[0]+LV_PROB[1])*rest ? 2 : 4;
 }
 // ---- 種類ごとの画像: Icons/house01～13.png, shop01～13.png, tree01～13.png (48x48, 01=1 ... 11=1024, 12=2048, 13=4096) ----
 const ICON_IMGS = {};
@@ -914,14 +910,14 @@ function updateSites(now){
     hud(); checkGameOver();
   }
 }
-// 128以上を作ると、数字1(レベル1)の建物が全種類消えて更地になる(2と4は消えない)
+// 1024(最大)を作ると、数字1と2(レベル1・2)の建物が全種類消えて更地になる。1024より小さい合体では、何も消えない
 function clearLow(nv,b){
   const t=tierOf(nv); if(t<1) return;
   // 光の柱: 1+1の合体から出る。最初はごく低い白で、レベルが上がるごとに少しずつ高く・金色に、レベル8以上で最大 (lvは1〜3の連続値)
   const lv=1+2*Math.min(1,(t-1)/7), tn=performance.now();
   effects.push({type:'pillar', x:b[0], y:b[1], t:tn, lv, tint:KINDS[kind[b[1]][b[0]]].tint});
-  if(t<7) return;                                        // 128(レベル8)以上から、数字1が消える(1024を作ったあとも、同じ)
-  const maxV=1, now=performance.now(), gone=new Set();      // 消えるのは、数字1だけ(128以上は、いつも同じ。2と4は消えない)
+  if(nv<MAXV) return;                                    // 1024(最大)を作ったときだけ、小さい建物が消える
+  const maxV=2, now=performance.now(), gone=new Set();      // 消えるのは、数字1と2(4以上は消えない)
   for(let y=0;y<N;y++) for(let x=0;x<N;x++){
     const v=grid[y][x];
     if(!v || v>maxV) continue;
@@ -929,7 +925,7 @@ function clearLow(nv,b){
     gone.add(v);
     grid[y][x]=0; anims.delete(y*N+x);                  // 判定の上では、すぐ消える。絵は、ゴーストが、あとで消す
   }
-  const rule=[1];                                       // お知らせには、実際に消えた数字ではなく、この合体で消える数字(ルール)を、いつも出す(128以上: 1)
+  const rule=[1,2];                                     // お知らせには、実際に消えた数字ではなく、この合体で消える数字(ルール)を、いつも出す(1024: 1と2)
   showClearToast(nv,rule); if(gone.size) sfxClear();
 }
 // ---- 小さい建物が消えるときの演出: 先に、赤い印と × で、何が消えるかを見せて、そのあと縮んで、土煙とともに消える ----
