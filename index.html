@@ -20,7 +20,7 @@
   html,body{margin:0;height:100%;overflow:hidden;color:#fff;overscroll-behavior:none;
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
-    background:linear-gradient(180deg,#d4eeff 0%,#a6dcfa 45%,#7ec6f3 100%);}   /* ハーバーブルー: 空から海へのグラデーション(上が明るく下が濃い) */
+    background:linear-gradient(180deg,#a3d5ff 0%,#86c8ff 45%,#6ebaff 100%);}   /* ハーバーブルー: 空から海へのグラデーション(上が明るく下が濃い) */
   canvas{position:fixed;left:0;top:0;width:100%;height:100%;touch-action:none}
   #hud{position:fixed;left:0;right:0;top:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;
     padding:8px 14px;padding-top:max(8px,env(safe-area-inset-top));
@@ -56,7 +56,7 @@
   #hud #passBtn.alert{background:#ff8a00}
   @keyframes passGlow{0%,100%{background:#ff7a00;box-shadow:0 0 0 0 rgba(255,150,0,0)}50%{background:#ffb02e;box-shadow:0 0 18px 7px rgba(255,150,0,.85)}}
   #stageSel{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:16px;overflow:auto;
-    background:linear-gradient(180deg,#addbfb 0%,#8eccf6 50%,#7dc3f2 100%)}
+    background:linear-gradient(180deg,#6fc1fb 0%,#3baaf6 50%,#1f9df2 100%)}
   /* タイトル画面の右上: アプリ一覧へ移動するボタン(16x16のドット絵を48pxに拡大) */
   #appsBtn{position:absolute;top:max(11px,env(safe-area-inset-top));right:max(11px,env(safe-area-inset-right));width:32px;height:32px;min-height:0;padding:0;margin:0;background:none;border:0;border-radius:0;box-shadow:none;opacity:.7;line-height:0;z-index:2}
   #appsBtn:hover{opacity:1;filter:none} #appsBtn:focus-visible{opacity:1;outline:2px solid #fff;outline-offset:2px}
@@ -261,7 +261,7 @@ const TXT = {
     <li>選び直すときは、地面や盤の外をクリック、右クリック、Esc。スマホは、相手を1回タップで確認、もう一度タップで決定です。</li>
     <li>1つつなぐごとに新築が1件増えます（建物の数は変わりません）。種類はランダムです。</li>
     <li>つなげる組み合わせがなくなったら Pass。Undo・Hint・Pass は、ボタンの数字の分だけ新築が増えます。</li>
-    <li>大きな建物を作ると、小さな建物が消えます。64以上を作ると「1」の建物が、盤面からまとめて消えます（消えたマスは更地に戻ります）。「2」「4」は消えません。1024は最大で、それ以上は合体できません。1024を作ったあとは、小さい建物は消えなくなります。</li>
+    <li>大きな建物を作ると、小さな建物が消えます。128以上を作ると「1」の建物が、盤面からまとめて消えます。1024は最大で、それ以上は合体できません。</li>
     <li>できた建物の数字に応じて、点数が入ります。数字が1段階大きくなるごとに、1回の点数は4倍になります（2を作ると10点、4で40点、8で160点、16で640点…）。大きな建物を作るほど、点数が一気に増えます。</li>
     <li>更地がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。スコアをタップすると内訳が見られます。</li>
     <li>1ターンごとにデータを保存しています。ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます。途中データはステージ毎に保存されています。</li>
@@ -298,7 +298,7 @@ const TXT = {
     <li>To deselect, click the ground or outside the board, right-click, or press Esc. On a phone, tap the partner once to preview and tap again to confirm.</li>
     <li>Every merge adds one new building (the number of buildings stays the same). Its type is random.</li>
     <li>When no merges are left, use Pass. Undo, Hint and Pass add as many new buildings as the number on the button.</li>
-    <li>Making a big building erases small ones. Making a 64 or bigger erases all the 1s from the whole board (the cells become empty land); 2s and 4s are never erased. 1024 is the top level and can't be merged further; once a 1024 is built, small buildings are no longer erased.</li>
+    <li>Making a big building erases small ones. Making a 128 or bigger erases all the 1s from the whole board. 1024 is the top level and can't be merged further.</li>
     <li>Each merge scores points based on the building you make. Every step up multiplies the points by 4 (making a 2 scores 10, a 4 scores 40, an 8 scores 160, a 16 scores 640…). The bigger the building, the more points you get.</li>
     <li>When no empty land is left, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Tap the score to see the breakdown.</li>
     <li>Your progress is saved every turn. You can close the browser, or return to the title screen with Save &amp; Exit, and resume later. Saved progress is kept separately for each stage.</li>
@@ -370,18 +370,19 @@ const MAPS = {
     title: 'Tsutenkaku', short: 'Tsutenkaku',
     previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
     train: null,
+    // (元の絵を反時計回りに90度回したもの)
     // J 通天閣: ランドマーク(建物は建たず、駒も通れない)
     rows: [
       'rrrrrrrrrrr',
-      'r.r..r..r.r',
-      'r.rrrrrrrrr',
-      'r..r.r.r..r',
-      'r..rrrrr..r',
-      'r..r.J.r..r',
-      'rrrrrrrrrrr',
-      'r....r..r.r',
-      'r.rrrrrrr.r',
-      'r.r..r..r.r',
+      'r.r...r...r',
+      'rrr...rrrrr',
+      'r.rrrrr.r.r',
+      'r.r.r.r.r.r',
+      'rrrrrJrrrrr',
+      'r.r.r.r.r.r',
+      'r.rrrrr.r.r',
+      'rrr...r.rrr',
+      'r.....r...r',
       'rrrrrrrrrrr'
     ]
   },
@@ -528,11 +529,13 @@ const terrain = MAPDEF.rows.map(row => [...row].map(c => CH[c]));
 const LMK = {}, DECK = new Set(), VDK = new Set(), VSX = new Set();      // VSX: 道の上に立つ高架の駅のマス      // VDK: 高架の線路が通るマス                            // LMK: ランドマークの種類(座標→文字)。DECK: 高架が通るマス
 MAPDEF.rows.forEach((row,y)=>[...row].forEach((c,x)=>{ if('KFZLEYQJ'.includes(c)) LMK[y*N0+x]=c; if(c==='V'||c==='O'||c==='x'||c==='o') VDK.add(y*N0+x); if(c==='o') VSX.add(y*N0+x); if(c==='H'||c==='U') DECK.add(y*N0+x); }));
 for(let y=0;y<N0;y++) for(let x=0;x<N0;x++) if(terrain[y][x]===HWY) terrain[y][x]=HWYW;     // 高架の下は、道以外は海(水面を描く)
-// 運河を左右または上下に挟んでいる道 = 橋(商店街なら、歩行者の橋)
+// 運河を左右または上下に挟んでいる道 = 橋(商店街なら、歩行者の橋)。盤面の端で、片側が水なら、川は盤面の外へ続くので、そこも橋
 for(let y=0;y<N;y++) for(let x=0;x<N;x++){
   if(terrain[y][x]!==ROAD && terrain[y][x]!==SHOP) continue;
   const w=(a,b)=>a>=0&&b>=0&&a<N&&b<N&&(terrain[b][a]===WATER||terrain[b][a]===HWYW);   // 高架の下の海も水
-  if((w(x-1,y)&&w(x+1,y))||(w(x,y-1)&&w(x,y+1))) terrain[y][x]=terrain[y][x]===SHOP?SBRIDGE:BRIDGE;
+  const oob=(a,b)=>a<0||b<0||a>=N||b>=N;
+  const span=(a,b,c,d)=>(w(a,b)&&w(c,d))||(oob(a,b)&&w(c,d))||(w(a,b)&&oob(c,d));     // 盤面の端で、片側が水・反対側が盤面の外のときも、橋(川が盤面の外へ続いている)
+  if(span(x-1,y,x+1,y)||span(x,y-1,x,y+1)) terrain[y][x]=terrain[y][x]===SHOP?SBRIDGE:BRIDGE;
 }
 const LABELS = [];
 const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
@@ -911,14 +914,14 @@ function updateSites(now){
     hud(); checkGameOver();
   }
 }
-// 64以上を作ると、数字1(レベル1)の建物が全種類消えて更地になる(2と4は消えない)
-function clearLow(nv,b,capped){
+// 128以上を作ると、数字1(レベル1)の建物が全種類消えて更地になる(2と4は消えない)
+function clearLow(nv,b){
   const t=tierOf(nv); if(t<1) return;
   // 光の柱: 1+1の合体から出る。最初はごく低い白で、レベルが上がるごとに少しずつ高く・金色に、レベル8以上で最大 (lvは1〜3の連続値)
   const lv=1+2*Math.min(1,(t-1)/7), tn=performance.now();
   effects.push({type:'pillar', x:b[0], y:b[1], t:tn, lv, tint:KINDS[kind[b[1]][b[0]]].tint});
-  if(t<6 || capped) return;
-  const maxV=1, now=performance.now(), gone=new Set();      // 消えるのは、数字1だけ(64以上は、いつも同じ。2と4は消えない)
+  if(t<7) return;                                        // 128(レベル8)以上から、数字1が消える(1024を作ったあとも、同じ)
+  const maxV=1, now=performance.now(), gone=new Set();      // 消えるのは、数字1だけ(128以上は、いつも同じ。2と4は消えない)
   for(let y=0;y<N;y++) for(let x=0;x<N;x++){
     const v=grid[y][x];
     if(!v || v>maxV) continue;
@@ -926,7 +929,7 @@ function clearLow(nv,b,capped){
     gone.add(v);
     grid[y][x]=0; anims.delete(y*N+x);                  // 判定の上では、すぐ消える。絵は、ゴーストが、あとで消す
   }
-  const rule=[1];                                       // お知らせには、実際に消えた数字ではなく、この合体で消える数字(ルール)を、いつも出す(64以上: 1)
+  const rule=[1];                                       // お知らせには、実際に消えた数字ではなく、この合体で消える数字(ルール)を、いつも出す(128以上: 1)
   showClearToast(nv,rule); if(gone.size) sfxClear();
 }
 // ---- 小さい建物が消えるときの演出: 先に、赤い印と × で、何が消えるかを見せて、そのあと縮んで、土煙とともに消える ----
@@ -977,12 +980,12 @@ function finishMove(){
   anims.set(b[1]*N+b[0], {t:performance.now(), type:'merge'});
   effects.push({x:b[0], y:b[1], t:performance.now(), txt:'+'+pointsFor(nv).toLocaleString('en-US')});
   const pts=pointsFor(nv);
-  const lvBefore=levelOf(bestValue), capped=bestValue>=MAXV;   // 1024が一度でも出ていたら、以後は小さい建物を消さない
+  const lvBefore=levelOf(bestValue);
   turns++; if(nv>bestValue) bestKind=k; bestValue=Math.max(bestValue,nv); score += pts; stats.pts[k]+=pts; stats.merges[k][tierOf(nv)]++;
   trackScore(pts);
   const lvUp = levelOf(bestValue)>lvBefore;           // レベルアップ中は、工事音(カンカンカン)を鳴らさない
   if(lvUp) levelUp(b[0],b[1],levelOf(bestValue),k,nv);
-  clearLow(nv,b,capped); sfxMerge(tierOf(nv));
+  clearLow(nv,b); sfxMerge(tierOf(nv));
   startSite(randKind(), null, lvUp);   // 新築は1件。種類は、直前に合体した種類とは無関係にランダム(住宅・商業・自然が同じ確率)
   hud();
   setMsg(`${KINDS[k].name}: ${nameOf(k,nv)}  +${pts.toLocaleString('en-US')}` );
@@ -1246,8 +1249,13 @@ function drawGround(now){
   }
   // 掘り込みの壁 (奥側の2辺)
   for(let y=0;y<N;y++) for(let x=0;x<N;x++){
-    if(terrain[y][x]===BRIDGE || terrain[y][x]===SBRIDGE || !isPit(terrain[y][x])) continue;
+    const tt=terrain[y][x];
+    if(!isPit(tt)) continue;
     const T=proj(x,y), R=proj(x+1,y), L=proj(x,y+1);
+    if(tt===BRIDGE || tt===SBRIDGE){                                       // 盤面の奥の端(上・左)にある橋: 橋の下から、盤面の外の空が透けて見えないように、奥に壁を描く
+      if(y===0) poly([T,R,[R[0],R[1]+CANAL_D],[T[0],T[1]+CANAL_D]], '#8a7a66');
+      if(x===0) poly([T,L,[L[0],L[1]+CANAL_D],[T[0],T[1]+CANAL_D]], '#6f624f');
+    }
     if(inb(x,y-1) && !wet(x,y-1)) poly([T,R,[R[0],R[1]+CANAL_D],[T[0],T[1]+CANAL_D]], '#8a7a66');
     if(inb(x-1,y) && !wet(x-1,y)) poly([T,L,[L[0],L[1]+CANAL_D],[T[0],T[1]+CANAL_D]], '#6f624f');
   }
@@ -1480,16 +1488,44 @@ function gondolaItems(items,now){
 }
 
 // ---- 大阪のランドマーク(ポリゴン): 海遊館(K) / 観覧車(F。回る) / 天保山(Z) ----
+// 海遊館: 正面が右下(+x)を向く。壁画の紺の大きな壁の上に、左右2つの大きな棟(外側が高く、中央へゆるく下がる屋根)。
+//   棟は、下から、紺(壁画)→ 赤い帯(下は水平、上は屋根と平行の斜め)→ 青いガラス。中央は、壁画の暗い壁に、ジンベエザメと、上に金色の門。
 function drawKaiyukan(x,y){
-  const cx=x+.5, cy=y+.5, B=(w,z0,z1,col,top)=>boxC(cx-w,cx+w,cy-w,cy+w,z0,z1,col,top);
-  B(.46,0,3,'#cfd8de');                                  // 基壇
-  B(.4,3,17,'#eef2f5');                                  // 大水槽の棟(白)
-  B(.41,8,12,'#2f6fb0'); B(.41,13,15,'#1f4f86');         // 青い帯
-  B(.3,17,28,'#2f5d8a','#3b78b4');                       // 上の棟(青いガラス)
-  B(.31,22,24,'#eef2f5');
-  B(.34,28,31,'#d3262b');                                // 赤い屋根
-  B(.12,31,38,'#eef2f5');                                // 塔
-  B(.13,36,38,'#d3262b');
+  const ZS=.8;                                                                          // 縦(高さ)を2割つぶす。平面の大きさは、そのまま
+  const cx=x+.5, cy=y+.5, P=(wx,wy,z)=>{ const [a,b]=proj(wx,wy); return [a,b-z*ZS]; };
+  const B=(xa,xb,ya,yb,z0,z1,c,t)=>boxC(xa,xb,ya,yb,z0*ZS,z1*ZS,c,t);
+  const R=(u,v,z)=>P(cx+v,cy+u,z);                                                      // u: 棟が並ぶ向き(y)、v: 奥行き(x。+v が正面=右下)
+  const NAVY='#2a3f78', RED='#d12a3a', GLASS='#4a7fae';
+  const H=32, HB=11.8, G=9, Z_IN=.81*H;                                                 // 外側の高さ / 紺と赤の境(水平) / ガラスの厚み / 内側の屋根の高さ
+  B(cx-.46,cx+.46,cy-.48,cy+.48,0,1.6,'#cfd2d6','#dcdfe3');                          // 敷地
+  const roof=(ua,ub,u)=>{ const t=(u-ua)/(ub-ua); return t; };
+  // 棟: u が ua → ub で、屋根の高さが za → zb。ua<ub なので、外側が ua か ub かは、za/zb の大小で決まる
+  const wing=(ua,ub,za,zb,va,vb)=>{
+    const zr=u=>za+(zb-za)*(u-ua)/(ub-ua);
+    const fq=(u0,u1,f0,f1,col,sh)=>poly([R(u0,vb,f0(u0)),R(u1,vb,f0(u1)),R(u1,vb,f1(u1)),R(u0,vb,f1(u0))],shade(col,sh),shade(col,sh),1);
+    const eq=(f0,f1,col,sh)=>poly([R(ub,va,f0(ub)),R(ub,vb,f0(ub)),R(ub,vb,f1(ub)),R(ub,va,f1(ub))],shade(col,sh),shade(col,sh),1);
+    const ZERO=()=>0, HBf=()=>HB, RT=u=>zr(u)-G, RF=u=>zr(u);
+    const uc=(ua+ub)/2, hl=(ub-ua)/2*.8, na=uc-hl, nb=uc+hl, nva=va*.8, nvb=vb*.8;                      // 紺の壁: 幅も奥行きも、上の80%
+    poly([R(na,nvb,0),R(nb,nvb,0),R(nb,nvb,HB),R(na,nvb,HB)],shade(NAVY,.7),shade(NAVY,.7),1);             // 紺(壁画)の正面(+x 面)
+    poly([R(nb,nva,0),R(nb,nvb,0),R(nb,nvb,HB),R(nb,nva,HB)],shade(NAVY,.86),shade(NAVY,.86),1);           // 紺(壁画)の端(+y 面)
+    fq(ua,ub,HBf,RT,RED,.7);     eq(HBf,RT,RED,.86);                                      // 赤い帯(上の縁が、屋根と平行に斜め)
+    fq(ua,ub,RT,RF,GLASS,.7);    eq(RT,RF,GLASS,.86);                                     // ガラス
+    poly([R(ua,va,zr(ua)),R(ub,va,zr(ub)),R(ub,vb,zr(ub)),R(ua,vb,zr(ua))],'#7fa8cc','#7fa8cc',1);   // ゆるく斜めのガラス屋根
+  };
+  wing(-.46,-.09,H,Z_IN,-.36,.36);                                                       // 奥(上)の棟: 外側(-.46)が高い
+  // 中央: 壁画の暗い壁に、ジンベエザメ。上に金色の門
+  const ZC=.74*H;
+  const CF=.46;                                                                          // 中央の構造物の正面(棟の正面 .36 より、前へ)
+  B(cx-.3,cx+CF,cy-.09,cy+.09,0,ZC,'#323b52','#444f6a');
+  const fc=(u,z)=>R(u,CF+.002,z);                                                          // 中央の壁の正面(+x 側)の面
+  ctx.fillStyle='#4aa0b4'; ctx.beginPath(); [[.07,5],[.05,12],[.02,18],[-.02,21.5],[-.05,19],[-.04,13],[-.01,8],[.02,3.5]].forEach(([u,z],i)=>{ const q=fc(u,z); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }); ctx.closePath(); ctx.fill();   // ジンベエザメ
+  ctx.fillStyle='#8cc8d6'; ctx.beginPath(); [[.02,13],[-.07,12],[-.05,16]].forEach(([u,z],i)=>{ const q=fc(u,z); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }); ctx.closePath(); ctx.fill();   // 胸びれ
+  const GOLD='#e6a323';                                                                  // 金色の門(中央の上)
+  B(cx+.3,cx+.37,cy-.1,cy-.05,ZC,ZC+3.6,GOLD); B(cx+.3,cx+.37,cy+.05,cy+.1,ZC,ZC+3.6,GOLD); B(cx+.3,cx+.37,cy-.1,cy+.1,ZC+2.4,ZC+3.8,GOLD);
+  wing(.09,.46,Z_IN,H,-.36,.36);                                                         // 手前(下)の棟: 外側(.46)が高い
+  // 壁画(紺の壁の正面): 魚や泡のような、小さな色の点と、黄色い魚
+  const mz=(u,z)=>R(u,.288+.002,z);                                                       // 紺の壁の正面(奥行きの80%)
+  for(const [u,z,c,r] of [[.2,3.5,'#f0d060',1.4],[.3,7,'#e0707a',1.2],[.38,4,'#9ad0e0',1.2],[-.2,5,'#f0d060',1.3],[-.3,8,'#e0707a',1.2],[-.38,4.5,'#9ad0e0',1.2],[.25,9,'#ffffff',1],[-.25,9.5,'#ffffff',1]]){ const q=mz(u,z); ctx.fillStyle=c; ctx.beginPath(); ctx.arc(q[0],q[1],r,0,Math.PI*2); ctx.fill(); }
 }
 function drawTempozan(x,y){
   const cx=x+.5, cy=y+.5, B=(w,z0,z1,col,top)=>boxC(cx-w,cx+w,cy-w,cy+w,z0,z1,col,top);
@@ -1536,8 +1572,9 @@ function drawFerris(x,y,now,o={}){
 }
 // 道頓堀大観覧車(えびすタワー): 輪の面を y-z 面に立て、川(-x 側)に正面を向ける。塔は川側に立つ
 function drawEbisu(x,y,now){
-  const cx=x+.5, cy=y+.5, B=(xa,xb,ya,yb,z0,z1,col,top)=>boxC(cx+xa,cx+xb,cy+ya,cy+yb,z0,z1,col,top);
-  drawFerris(x,y,now,{R:21,Z:34,dy:-.1,swap:true,noBase:true,noLegs:true,rim:['#e2574c','#ff6a5c'],cols:['#ffffff','#d8262c']});   // 輪を先に描き、手前(+x)の塔を後から重ねて、輪の一部を隠す
+  const HS=.6;                                                // ビルの高さの倍率(6割)
+  const cx=x+.5, cy=y+.5, B=(xa,xb,ya,yb,z0,z1,col,top)=>boxC(cx+xa,cx+xb,cy+ya,cy+yb,z0*HS,z1*HS,col,top);
+  drawFerris(x,y,now,{R:21*.7,Z:34*HS,dy:-.1,swap:true,noBase:true,noLegs:true,rim:['#e2574c','#ff6a5c'],cols:['#ffffff','#d8262c']});   // 輪を先に描き、手前(+x)の塔を後から重ねて、輪の一部を隠す
   // 塔(ドン・キホーテ道頓堀店のビル): 長方形のビル。灰色の横線の外壁、下に黒い看板(黄色い3本線)と赤いひさし。土台は付けない
   B(.22,.44,-.3,.3,0,50,'#b3b9bf','#c4c9ce');              // 外壁(灰色)
   B(.216,.444,-.304,.304,0,3,'#2a2a2e');                    // 1階(暗い店内)
@@ -1549,7 +1586,7 @@ function drawEbisu(x,y,now){
 // グリコサイン: ビルの壁面(右下向き)に描かれた、青い看板と、ゴールインのランナー(白いランニング姿で万歳、片膝を上げる。脚は開かない)
 const GLICO_IMG = Object.assign(new Image(), {src:'Icons/glico.png'});     // 22x32 のドット絵
 function drawGlico(x,y){
-  const cx=x+.5, cy=y+.5, W=.46, H=46.4, WX=cx+W;
+  const SC=.77, cx=x+.5, cy=y+.5, W=.46*SC, H=46.4*SC, WX=cx+W;     // 大きさは7.7割(幅・奥行き・高さ)。余った土地は、更地の緑のまま
   boxC(cx-W,cx+W,cy-W,cy+W,0,H,'#d4cec2','#e2ddd2');         // ビル
   boxC(cx-W-.02,cx+W+.02,cy-W-.02,cy+W+.02,H,H+2,'#8d9199');  // 屋上の縁
   const P=(u,z)=>{ const [a,b]=proj(WX+.002,cy-u/32); return [a,b-z]; };    // 右下向きの壁面上の点(u: 画面の横のpx, +が右, z: 高さ)
