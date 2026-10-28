@@ -4,8 +4,8 @@
  *  - GET  /?stage= : そのステージの上位100件を [{name, score, level}] で返す
  * 使い方は cloudflare/README.md を見てください。
  */
-const STAGES = ['osakastation', 'namba', 'tsutenkaku', 'tempozan', 'minato', 'chinatown'];   // ゲーム側のステージIDと同じ
-const TEST_NAME = 'DAISUQE';   // リリース前のテスト: この名前でしか登録できない。リリース時は null にする
+const STAGES = ['osakastation', 'namba', 'tsutenkaku', 'tempozan'];   // ゲーム側のステージIDと同じ
+const TEST_NAME = null;   // リリース前のテスト: この名前でしか登録できない。リリース時は null にする
 const TOP_N = 100, MAX_SCORE = 1e11, MAX_LEVEL = 30, NAME_MAX = 8;
 
 const CORS = {
