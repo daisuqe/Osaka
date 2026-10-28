@@ -157,11 +157,18 @@
       background:none;backdrop-filter:none;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.75),0 0 2px rgba(0,0,0,.6)}
     #hud b{font-size:23px;margin-left:4px}
     #scoreBox b,#levelBox b{font-size:32px;margin-left:4px}
+    #levelBox b{font-size:42px}                  /* Level の数字は、3割大きく(32px → 約42px) */
     #hud .sp{display:none}                       /* FilledとLevelの間は、特に開けない(Levelは2段目の右端へ) */
     #levelBox{position:absolute;right:max(12px,env(safe-area-inset-right));top:100%}   /* Level: 上部バーの2段目、右端 */
     #hud .btns{flex-wrap:nowrap;gap:6px;margin-left:auto}
     button{padding:7px 12px;font-size:19px;min-height:44px;text-shadow:none}
     #mapTitle{font-size:24px}
+    /* 上のバーが画面に収まらないとき(JS が #hud.tight を付ける): ボタンの左右の余白を半分に、スコアの文字を小さく、左端の余白を半分に。ボタンの「Undo」と「(+1)」の間の空きも、なくす */
+    #hud.tight{padding-left:max(5px,env(safe-area-inset-left))}
+    #hud.tight{gap:0 8px} #hud.tight .btns{gap:4px}            /* 項目どうしの間も、少し詰める */
+    #hud.tight button{padding:7px 6px}
+    #hud.tight #scoreBox b{font-size:26px}
+    #hud.tighter{font-size:15px} #hud.tighter b{font-size:20px} #hud.tighter #scoreBox b{font-size:22px} #hud.tighter button{font-size:16px;padding:6px 5px}   /* それでも収まらない小さな画面(幅が狭いスマホ)や、桁が多いスコアのとき */
   }
   /* スマホ横向きのスタート画面: マップを小さくして縦に重ならないようにし、Ranking / How to Play も画面内に収める */
   @media (orientation:landscape) and (max-height:500px){
@@ -321,12 +328,12 @@ const MAPS = {
     railStyle: 'jrwest',           // 電車の色(JR西日本: 銀に青い帯)
     elev: true,                    // 線路は高架(地面より0.5マス高い)。車は下を通る
     train: {y:2},                  // 高架の線路(横向き)
-    // O 大阪駅(高架の駅) / o 同じ駅で、下を道が通り抜けるマス(左の縦の道2本は、駅と線路の下を通る) / N 大阪梅田駅(阪急) / V 高架の線路 / x 高架の下を通る道
+    // O 大阪駅(高架の駅) / o 同じ駅で、下を道が通り抜けるマス(縦の道は、高架の線路の下を通る。大阪駅は2マス) / N 大阪梅田駅(阪急) / V 高架の線路 / x 高架の下を通る道
     // Y 梅田スカイビル / Q HEP FIVE の観覧車: ランドマーク(建物は建たず、駒も通れない)
     rows: [
       'Yr.r..rN.r.',
       'rrrrrrrN.r.',
-      'VxOoOVxVVxV',
+      'VxVxOOxVVxV',
       'rrrrrrrrrrr',
       '.r.r..r.Qr.',
       '.r.r..r..r.',
@@ -646,7 +653,7 @@ function setMsg(s,big,sub){                           // big=true: 少し大き�
 function hud(){
   let cnt=0;
   for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(grid[y][x]) cnt++;
-  $('score').textContent = score.toLocaleString('en-US');
+  $('score').textContent = score.toLocaleString('en-US'); if(typeof fitHud==='function') fitHud();      // 数字の桁が増えたときも、収まるか測る
   $('level').textContent = Math.max(1, Math.round(Math.log2(bestValue)));   // 作った最高の建物のレベル-1 (最初はレベル1から)
   $('turns').textContent = turns;
   const landTotal = terrain.flat().filter(t=>t===LAND).length;      // 建物を置ける更地の数
@@ -901,7 +908,7 @@ function checkGameOver(){
 function updateSites(now){
   for(const [key,st] of sites){
     if(now-st.t0<BUILD_MS){                          // 工事中は土煙を出し続ける
-      if(!(now<st.nextPuff)){ st.nextPuff=now+130; const [px,py]=center(st.x,st.y); puff(px,py,8,{ring:8,rise:6,r:9}); }
+      if(!(now<st.nextPuff)){ st.nextPuff=now+130; const [px,py]=center(st.x,st.y); puff(px,py,24,{ring:8,rise:6,r:9}); }     // 土煙の量は3倍(8 → 24)
       continue;
     }
     sites.delete(key); fresh.add(key);
@@ -1337,6 +1344,39 @@ function drawSite(st,now){
   poly(diamond(x,y,1), '#c8a66e', 'rgba(0,0,0,.2)', 1);                 // 地面(土)
   drawFence(x,y,0); drawFence(x,y,1);
 }
+// 工事のあと、柵が残っている間の建物: 十字型のグロー(4方向に細く伸びる光)が、ゆっくり、ちかちかする。小さく、控えめに。
+//   同時に4つ(周期をずらして、3〜4個が見える)。光るたびに、場所を変える(前と同じ場所には出さない。4つの光は、場所の候補を分け合うので、同時に同じ場所にもならない)
+const SPARK_SPOTS = [[11,-3],[-9,3],[3,-9],[-13,-6],[14,5],[-3,9],[8,12],[-8,-11],[-12,7],[2,-13],[13,-9],[-5,13],[-14,0],[6,-6],[-1,-5],[12,1]];   // 建物の上のあたりの、出現場所の候補(建物の中心の x、上端の y からのずれ)。16か所
+const SPARK_SLOTS = [[1245,0,1],[1467,.37,.75],[1333,.71,.6],[1600,.19,.5]];             // [周期ms, 位相, 大きさ]。最初の2.25倍の速さ(1.5倍を2回)。光 k は、番号が k, k+4, k+8, k+12 の4か所だけを使う
+const SPARK_UP = 11;                                                                       // きらめきを、建物の上へ、このぶん(px)ずらす
+const SPARK_T0 = new Map();                                                              // 柵が出てから(きらめきを始めてから)の時刻
+const sparkHash = (a,b) => { const h=Math.sin(a*12.9898+b*78.233)*43758.5453; return h-Math.floor(h); };
+function sparkIdx(cyc,slot,key){                     // cyc 回目に光る場所の番号(0..3)。1つ前の回から、必ず別の場所へ進む
+  let i=Math.floor(sparkHash(key,slot+1)*4);
+  for(let c=1;c<=cyc;c++) i=(i+1+Math.floor(sparkHash(c+slot*101,key)*3))%4;
+  return i;
+}
+function drawFreshSparkles(now){
+  for(const k of SPARK_T0.keys()) if(!fresh.has(k)) SPARK_T0.delete(k);
+  if(!fresh.size) return;
+  ctx.save();
+  for(const key of fresh){
+    const fx=key%N, fy=key/N|0, v=grid[fy][fx]; if(!v) continue;
+    if(!SPARK_T0.has(key)) SPARK_T0.set(key,now);
+    const el=now-SPARK_T0.get(key), [cx,cy]=center(fx,fy), top=cy-heightOf(v);
+    SPARK_SLOTS.forEach(([per,ph,sz],slot)=>{
+      const u=el/per+ph, cyc=Math.floor(u), t=u-cyc, s=.5-.5*Math.cos(t*Math.PI*2);        // 0 → 1 → 0 を、ゆっくりくり返す
+      if(s<.04) return;
+      const [dx,dy]=SPARK_SPOTS[slot+4*sparkIdx(cyc,slot,key)], x=cx+dx, y=top+dy-SPARK_UP, L=(4.5+6*s)*sz, w=(.8+.6*s)*sz, a=Math.min(1,.28+.62*s);
+      const g=ctx.createRadialGradient(x,y,0,x,y,L*.9); g.addColorStop(0,`rgba(255,248,215,${Math.min(1,a*.95)})`); g.addColorStop(1,'rgba(255,248,215,0)');
+      ctx.globalAlpha=1; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,L*.9,0,Math.PI*2); ctx.fill();          // やわらかい、小さなグロー
+      ctx.globalAlpha=a; ctx.fillStyle='#fffbe6';
+      ctx.beginPath(); ctx.moveTo(x-L,y); ctx.lineTo(x,y-w); ctx.lineTo(x+L,y); ctx.lineTo(x,y+w); ctx.closePath(); ctx.fill();         // 横の光
+      ctx.beginPath(); ctx.moveTo(x,y-L*1.25); ctx.lineTo(x+w,y); ctx.lineTo(x,y+L*1.25); ctx.lineTo(x-w,y); ctx.closePath(); ctx.fill(); // 縦の光
+    });
+  }
+  ctx.restore();
+}
 // 柵だけ(part 0=奥の2辺, 1=手前の2辺)。工事直後の建物の周りにも使う
 const FENCE_IMGS = ['construction_back','construction_front'].map(n=>Object.assign(new Image(), {src:'Icons/'+n+'.png'}));
 function drawFence(x,y,part){
@@ -1651,25 +1691,40 @@ function drawArcade(x,y){
   }
 }
 // 高架の線路: 地面より0.5マス高い所を、横一列に通る。橋脚で支え、道の上は橋脚なしで渡る(車は下を通る)
-function drawViaduct(x,y,pier){
-  const e=.002;
-  if(pier) boxC(x+.36,x+.64,y+.3,y+.7,0,ELEV_Z0,'#a9a7a0');                               // 橋脚
-  boxC(x-e,x+1+e,y+.08,y+.92,ELEV_Z0,ELEV_Z1,'#b9b7b0','#c9c7c0');                        // 線路の床
-  boxC(x-e,x+1+e,y+.08,y+.14,ELEV_Z1,ELEV_Z1+2.5,'#a8a69f');                              // 縁の壁
-  boxC(x-e,x+1+e,y+.86,y+.92,ELEV_Z1,ELEV_Z1+2.5,'#a8a69f');
+function drawViaduct(x,y,pier,wide){
+  const e=.002, W=wide?.84:.84*.6, y0=.5-W/2, y1=.5+W/2, rl=wide?.14:.12;                 // 線路の床の幅(駅以外は6割。後ろが見えやすい)
+  if(pier) boxC(x+.36,x+.64,y+.38,y+.62,0,ELEV_Z0,'#a9a7a0');                               // 橋脚
+  boxC(x-e,x+1+e,y+y0,y+y1,ELEV_Z0,ELEV_Z1,'#b9b7b0','#c9c7c0');                          // 線路の床
+  boxC(x-e,x+1+e,y+y0,y+y0+.05,ELEV_Z1,ELEV_Z1+2.5,'#a8a69f');                            // 縁の壁
+  boxC(x-e,x+1+e,y+y1-.05,y+y1,ELEV_Z1,ELEV_Z1+2.5,'#a8a69f');
   ctx.save(); ctx.strokeStyle='#7d7d84'; ctx.lineWidth=1.6;                                 // 2本のレール
-  for(const yy of [.36,.64]){ const [ax,ay]=proj(x,y+yy), [bx,by]=proj(x+1,y+yy); ctx.beginPath(); ctx.moveTo(ax,ay-ELEV_Z1); ctx.lineTo(bx,by-ELEV_Z1); ctx.stroke(); }
+  for(const yy of [.5-rl,.5+rl]){ const [ax,ay]=proj(x,y+yy), [bx,by]=proj(x+1,y+yy); ctx.beginPath(); ctx.moveTo(ax,ay-ELEV_Z1); ctx.lineTo(bx,by-ELEV_Z1); ctx.stroke(); }
   ctx.restore();
 }
-// 大阪駅(JR): 高架の上の、白い駅舎と、銀色の大屋根(青い帯)
-function drawOsakaStn(x,y){
-  const e=.002;
-  boxC(x-e,x+1+e,y+.05,y+.95,ELEV_Z1,ELEV_Z1+12,'#eef1f4','#f7f9fb');                      // 駅舎(白)
-  boxC(x-e,x+1+e,y+.04,y+.96,ELEV_Z1+4,ELEV_Z1+9,'#46688c');                               // 窓の帯
-  boxC(x-e,x+1+e,y+.03,y+.97,ELEV_Z1+10,ELEV_Z1+12,'#0072bc');                             // JR西日本の青い帯
-  boxC(x-e,x+1+e,y+.1,y+.9,ELEV_Z1+12,ELEV_Z1+15,'#c3ccd5','#d3dbe2');                     // 大屋根(銀): 3段で丸みをつける
-  boxC(x-e,x+1+e,y+.22,y+.78,ELEV_Z1+15,ELEV_Z1+17,'#d0d8df','#e0e6eb');
-  boxC(x-e,x+1+e,y+.36,y+.64,ELEV_Z1+17,ELEV_Z1+18.5,'#dde3e8','#eef2f5');
+// 大阪駅(JR): 高架のホームの上に、奥(北)が高く、手前(南)へゆるく下がる、一枚の大きな斜めの屋根(大屋根)。
+//   銀色の屋根に、斜面に沿った筋(リブ)、手前の縁に青い帯と、白いトラス(三角の鉄骨)。奥には白い壁
+const osk=()=>({ZH:ELEV_Z1+23, ZL:ELEV_Z1+13});                                           // 屋根の高さ: 奥(ZH) → 手前(ZL)
+function drawOsakaStnBack(x,y){                                                          // 奥の白い壁と、窓の帯(電車より奥にあるので、電車より先に描く)
+  const e=.002, {ZH,ZL}=osk();
+  boxC(x-e,x+1+e,y+.03,y+.14,ELEV_Z1,ZH,'#eef1f4','#f7f9fb');
+  boxC(x-e,x+1+e,y+.04,y+.15,ZL+2,ZH-3,'#46688c');
+}
+function drawOsakaStn(x,y){                                                              // 柱・トラス・屋根(電車より上と手前にあるので、電車のあとに描く = 電車は屋根の下を通る)
+  const e=.002, {ZH,ZL}=osk(), v0=.02, v1=.98;
+  const zr=v=>ZH+(ZL-ZH)*(v-v0)/(v1-v0);
+  const P=(wx,wy,z)=>{ const [a,b]=proj(wx,wy); return [a,b-z]; };
+  for(const u of [.1,.5,.9]) boxC(x+u-.03,x+u+.03,y+.86,y+.92,ELEV_Z1,ZL,'#e9ecef','#f4f6f8');   // 手前の、細い白い柱
+  // 屋根の下の面(手前の縁): 青い帯と、白いトラス
+  poly([P(x,y+v1,ZL),P(x+1,y+v1,ZL),P(x+1,y+v1,ZL-2.2),P(x,y+v1,ZL-2.2)],'#0072bc','#0072bc',1);
+  ctx.save(); ctx.strokeStyle='#f2f5f7'; ctx.lineWidth=1.1; ctx.lineJoin='round'; ctx.beginPath();
+  for(let k=0;k<=4;k++){ const u=x+k/4, q=P(u,y+v1,ZL-2.2), r=P(u+(k<4?.125:0),y+v1,ZL-7); ctx.moveTo(q[0],q[1]); ctx.lineTo(r[0],r[1]); if(k<4){ const t=P(u+.25,y+v1,ZL-2.2); ctx.lineTo(t[0],t[1]); } }   // ジグザグのトラス
+  ctx.stroke(); ctx.restore();
+  // 斜めの大屋根(一枚)
+  poly([P(x-e,y+v0,ZH),P(x+1+e,y+v0,ZH),P(x+1+e,y+v1,ZL),P(x-e,y+v1,ZL)],'#c2ced8','#c2ced8',1);
+  ctx.save(); ctx.lineWidth=.9;
+  for(let k=1;k<8;k++){ const v=v0+(v1-v0)*k/8, a=P(x,y+v,zr(v)), b=P(x+1,y+v,zr(v)); ctx.strokeStyle=(k&1)?'rgba(150,168,182,.55)':'rgba(238,244,248,.7)'; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); }   // 斜面に沿った筋
+  ctx.restore();
+  poly([P(x-e,y+v1,ZL),P(x+1+e,y+v1,ZL),P(x+1+e,y+v1,ZL+1.4),P(x-e,y+v1,ZL+1.4)],'#e9eff3','#e9eff3',1);   // 屋根の手前の縁(白)
 }
 // 大阪梅田駅(阪急): マルーンの駅舎と、クリーム色の屋根
 function drawHankyuStn(x,y){
@@ -2044,8 +2099,8 @@ function frame(now){
   for(const k in LMK){ const lx=k%N, ly=k/N|0; items.push({x:lx,y:ly,d:lx+ly+.5,lmk:LMK[k]}); }          // ランドマーク
   for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(terrain[y][x]===ARC) items.push({x,y,d:x+y+.5,arc:1});     // アーケード
   for(const g of noEntrySigns()) items.push({x:g.x,y:g.y,d:g.x+g.y+.45,sign:g});          // 車両進入禁止の立札
-  for(const k of VDK){ const vx=k%N, vy=k/N|0; items.push({x:vx,y:vy,d:vx+vy+.5,via:1,pier:terrain[vy][vx]!==ROAD}); }   // 高架の線路
-  for(let y=0;y<N;y++) for(let x=0;x<N;x++){ if(terrain[y][x]===VSTN || VSX.has(y*N+x)) items.push({x,y,d:x+y+.7,ostn:1}); else if(terrain[y][x]===HKST) items.push({x,y,d:x+y+.5,hk:1}); }
+  for(const k of VDK){ const vx=k%N, vy=k/N|0; items.push({x:vx,y:vy,d:vx+vy+.5,via:1,pier:terrain[vy][vx]!==ROAD,wide:terrain[vy][vx]===VSTN||VSX.has(k)}); }   // 高架の線路
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){ if(terrain[y][x]===VSTN || VSX.has(y*N+x)){ items.push({x,y,d:x+y+.55,ostnb:1}); items.push({x,y,d:x+y+.7,ostn:1}); } else if(terrain[y][x]===HKST) items.push({x,y,d:x+y+.5,hk:1}); }
   for(const k of DECK){ const dx=k%N, dy=k/N|0; items.push({x:dx,y:dy,d:dx+dy+.5,deck:1,under:terrain[dy][dx]===ROAD||terrain[dy][dx]===BRIDGE}); }   // 高速道路
   for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(terrain[y][x]===MTOWER) items.push({x,y,d:x+y+.5,mtower:1});
   for(const st of sites.values()) items.push({x:st.x,y:st.y,d:st.x+st.y,site:st});
@@ -2076,7 +2131,8 @@ function frame(now){
     if(it.lmk){ ({K:drawKaiyukan,Z:drawTempozan,L:drawGlico,E:(a,b)=>drawEbisu(a,b,now),Y:drawUmedaSky,Q:(a,b)=>drawHepFive(a,b,now),J:drawTsutenkaku,F:(a,b)=>drawFerris(a,b,now)})[it.lmk](it.x,it.y); continue; }
     if(it.arc){ drawArcade(it.x,it.y); continue; }
     if(it.sign){ drawNoEntry(it.sign); continue; }
-    if(it.via){ drawViaduct(it.x,it.y,it.pier); continue; }
+    if(it.via){ drawViaduct(it.x,it.y,it.pier,it.wide); continue; }
+    if(it.ostnb){ drawOsakaStnBack(it.x,it.y); continue; }
     if(it.ostn){ drawOsakaStn(it.x,it.y); continue; }
     if(it.hk){ drawHankyuStn(it.x,it.y); continue; }
     if(it.deck){ drawDeck(it.x,it.y,it.under); continue; }
@@ -2125,6 +2181,7 @@ function frame(now){
     drawNum(n[0],n[1],n[2],n[3]);
   }
   drawLabels();
+  drawFreshSparkles(now);                                        // 工事直後(柵が残っている間)の建物: 十字のきらめき
   // エフェクト
   effects=effects.filter(e=>now-e.t<(e.type==='dust'?e.life:e.type==='pillar'?1400:e.type==='confetti'?3200:e.type==='lvburst'?2000:900));
   for(const e of effects){
@@ -2910,9 +2967,19 @@ applyVolumes();
 
 
 $('manualBtn').onclick = () => { $('menuPanel').style.display='none'; $('manualBody').innerHTML=$('help').innerHTML; $('manualPanel').style.display='flex'; };   // ゲーム中も、タイトルと同じ How to Play 画面を出す(Menu は閉じる)
-$('undoBtn').textContent = `Undo (+${UNDO_SITES})`;
-$('passBtn').textContent = `Pass (+${PASS_SITES})`;
-$('hintBtn').textContent = `Hint (+${HINT_SITES})`;
+function fitHud(){                                  // 上のバーが1行に収まらないとき、詰めた表示(#hud.tight)にする
+  const h=$('hud'); if(!h) return;
+  const wasTight=h.classList.contains('tight');
+  h.classList.remove('tight','tighter'); setHudLabels(false);
+  if(h.scrollWidth>h.clientWidth+1){ h.classList.add('tight'); setHudLabels(true);
+    if(h.scrollWidth>h.clientWidth+1) h.classList.add('tighter'); }       // それでも収まらないときは、文字もさらに小さく
+}
+function setHudLabels(tight){                       // 詰めた表示では、「Undo」と「(+1)」の間の空きを、なくす
+  const sp=tight?'':' ';
+  $('undoBtn').textContent=`Undo${sp}(+${UNDO_SITES})`; $('passBtn').textContent=`Pass${sp}(+${PASS_SITES})`; $('hintBtn').textContent=`Hint${sp}(+${HINT_SITES})`;
+}
+setHudLabels(false);
+addEventListener('resize',fitHud); addEventListener('orientationchange',()=>setTimeout(fitHud,200));
 const closeMenu = () => { $('menuPanel').style.display='none'; $('help').style.display='none'; };
 $('menuBtn').onclick = () => { $('menuPanel').style.display='flex'; };
 $('menuClose').onclick = closeMenu;
