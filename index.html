@@ -104,7 +104,7 @@
   #titleBtns{display:flex;flex-direction:column;align-items:center}
   body.preview{background:none} body.preview #hud,body.preview #mapTitle,body.preview #msg,body.preview #hintOk,body.preview #stageSel{display:none!important}
   html:has(body.preview){background:none}
-  .stageCard iframe{width:315px;height:225px;border:0;pointer-events:none;background:transparent;display:block}
+  .stageCard iframe{width:630px;height:450px;margin:0 -315px -225px 0;transform:scale(.5);transform-origin:0 0;border:0;pointer-events:none;background:transparent;display:block}   /* 倍の大きさで描いて、半分に縮小(アンチエイリアス)。レイアウト上の大きさは 315x225 のまま */
   #fxLayer{position:fixed;inset:0;z-index:38;pointer-events:none;overflow:hidden}
   #fxBanner{position:fixed;left:0;right:0;top:16%;z-index:40;display:none;flex-direction:column;align-items:center;gap:8px;pointer-events:none;text-align:center;padding:0 12px}
   #fxBanner .ttl{font-size:clamp(42px,12vw,104px);font-weight:900;letter-spacing:.05em;line-height:1.05;
@@ -175,7 +175,7 @@
     #stageSel{gap:2px;padding:6px 10px;justify-content:center}
     #stageSel h2{font-size:34px;line-height:1.1}
     #stageList{padding:0 14px;gap:14px}
-    .stageCard{width:180px;padding:2px 4px;font-size:16px;gap:2px} .stageCard iframe{width:180px;height:120px} .stageCard small{font-size:12px}
+    .stageCard{width:180px;padding:2px 4px;font-size:16px;gap:2px} .stageCard iframe{width:360px;height:240px;margin:0 -180px -120px 0} .stageCard small{font-size:12px}
     #titleBtns{flex-direction:row;gap:18px}
     #titleRank,#titleManual{font-size:20px;min-height:34px;padding:2px 16px;margin:0}
   }
@@ -331,17 +331,15 @@ const MAPS = {
     // O 大阪駅(高架の駅) / o 同じ駅で、下を道が通り抜けるマス(縦の道は、高架の線路の下を通る。大阪駅は2マス) / N 大阪梅田駅(阪急) / V 高架の線路 / x 高架の下を通る道
     // Y 梅田スカイビル / Q HEP FIVE の観覧車: ランドマーク(建物は建たず、駒も通れない)
     rows: [
-      'Yr.r..rN.r.',
-      'rrrrrrrN.r.',
-      'VxVxOOxVVxV',
-      'rrrrrrrrrrr',
-      '.r.r..r.Qr.',
-      '.r.r..r..r.',
-      'rrrrrrrrrrr',
-      '.r.r..r..r.',
-      'WrWrWWrrrrW',
-      '.r.r...r...',
-      'WrWrWWWrWWW'
+      'Yr..rN.r.',
+      'rrrrrN.r.',
+      'VxOOxVVxV',
+      'rrrrrrrrr',
+      '.r..r.Qr.',
+      'rrrrrrrrr',
+      '.r..r..r.',
+      'WrWWrrrrW',
+      '.r...r...'
     ]
   },
   namba: {
@@ -352,17 +350,15 @@ const MAPS = {
     // L グリコサイン / E 道頓堀大観覧車(えびすタワー): ランドマーク(建物は建たず、駒も通れない)
     // s 商店街(駒は通れない道。道頓堀川の上は橋になる) / a 屋根のあるアーケード(同じく通れない)
     rows: [
-      'rrrrrrrrrrr',
-      'r.r..r.W.r.',
-      'rrrrrrrrrrr',
-      'a.r..sLW.s.',
-      'aaraasssssa',
-      'a.r..s.W.s.',
-      'a.rrrs.WEs.',
-      'a.r..s.W.s.',
-      'aaraasssssr',
-      'r.r..s.W.s.',
-      'rrraasssssr'
+      'rrrrrrrrr',
+      '.r..sLW.s',
+      'araasssss',
+      '.r..s.W.s',
+      '.rrrs.WEs',
+      '.r..s.W.s',
+      'araasssss',
+      '.r..s.W.s',
+      'rraasssss'
     ]
   },
   tsutenkaku: {
@@ -372,40 +368,35 @@ const MAPS = {
     // (元の絵を反時計回りに90度回したもの)
     // J 通天閣: ランドマーク(建物は建たず、駒も通れない)
     rows: [
-      'rrrrrrrrrrr',
-      'r.r...r...r',
-      'rrr...rrrrr',
-      'r.rrrrr.r.r',
-      'r.r.r.r.r.r',
-      'rrrrrJrrrrr',
-      'r.r.r.r.r.r',
-      'r.rrrrr.r.r',
-      'rrr...r.rrr',
-      'r.....r...r',
-      'rrrrrrrrrrr'
+      'rrrrrrrrr',
+      'r....r..r',
+      'rrrr.rrrr',
+      'r..rrr..r',
+      'rrrrJrrrr',
+      'r..rrr..r',
+      'rrrr.r..r',
+      'r....r..r',
+      'rrrrrrrrr'
     ]
   },
   tempozan: {
     title: 'Tempozan', short: 'Tempozan',
     previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
     train: null,
-    ships: [ {x:3,y:10,len:2,axis:'x',flip:true,style:'war'},      // 軍艦(大阪港 中央突堤北岸壁): 左向き
-             {x:0,y:8,len:2,axis:'y',flip:true,style:'pirate'} ],   // 海遊館西はとばの遊覧船: 上向き
+    ships: [ {x:0,y:6,len:2,axis:'y',flip:true,style:'pirate'} ],   // 海遊館西はとばの遊覧船: 上向き(軍艦は、なし)
     // (元の絵を反時計回りに90度回したもの)
     // K 海遊館 / F 観覧車(回る) / Z 天保山: ランドマーク(建物は建たず、駒も通れない)。H 高速(道路より高い位置を通る。道とはつながらない)
     // U 高速の下を、道が通り抜けるマス
     rows: [
-      'WWWWWWrWWWW',
-      'HHHHHHUHHHH',
-      'WZ....r...W',
-      'W.rrrrrrrrr',
-      'Wrr.r.r.r.W',
-      'WFrrrrrrrrW',
-      'W.r.r.r.r.W',
-      'W.r.r.r.r.W',
-      'W.rrrrrrr.W',
-      'WKr...r...W',
-      'WWWWW.rWWWW'
+      'HHHHUHHHH',
+      'WZrrrrrrr',
+      'W.r.r.r.W',
+      'WFrrrrr.W',
+      'W.r.r.r.W',
+      'W.r.r.r.W',
+      'W.rrrrr.W',
+      'WK..r...W',
+      'WWW.r.WWW'
     ]
   },
   minato: {
