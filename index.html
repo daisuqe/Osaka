@@ -20,7 +20,7 @@
   html,body{margin:0;height:100%;overflow:hidden;color:#fff;overscroll-behavior:none;
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
-    background:linear-gradient(180deg,#a3d5ff 0%,#86c8ff 45%,#6ebaff 100%);}   /* ハーバーブルー: 空から海へのグラデーション(上が明るく下が濃い) */
+    background:linear-gradient(180deg,#98dfff 0%,#77caff 45%,#5db1ff 100%);}   /* ハーバーブルー: 空から海へのグラデーション(上が明るく下が濃い) */
   canvas{position:fixed;left:0;top:0;width:100%;height:100%;touch-action:none}
   #hud{position:fixed;left:0;right:0;top:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;
     padding:8px 14px;padding-top:max(8px,env(safe-area-inset-top));
@@ -190,9 +190,9 @@
   <div class="sp"></div>
   <div id="levelBox">Level<b id="level">1</b></div>
   <div class="btns">
-  <button class="sub" id="undoBtn">Undo (+1)</button>
-  <button class="sub" id="hintBtn">Hint (+1)</button>
-  <button class="sub" id="passBtn">Pass (+2)</button>
+  <button class="sub" id="undoBtn">Undo</button>
+  <button class="sub" id="hintBtn">Hint</button>
+  <button class="sub" id="passBtn">Pass</button>
   <button class="sub toggle on" id="infoBtn">Labels</button>
   <button class="sub" id="menuBtn">Menu</button>
   </div>
@@ -263,19 +263,20 @@ const TXT = {
     nameMsg: 'ランキングに載せる名前を入力してください（8文字まで）。',
     preRelease: 'リリース前なので登録できません',
     helpHtml: `<h4>遊び方</h4><ul>
-    <li>同じ種類・同じ数字の建物をつなぐと、合計した数字になります。建物を選んで、つなぎたい相手を選びます（曲がるのは1回まで、相手の隣まで移動できればつながります）。選び直すときは、地面や盤の外をクリック、右クリック、Esc。スマホは、相手を1回タップで確認、もう一度タップで決定です。</li>
-    <li>1つつなぐごとに新築が1件増えます（建物の数は変わりません）。つなげる組み合わせがなくなったら Pass。Undo・Hint・Pass は、ボタンの数字の分だけ新築が増えます。</li>
+    <li>同じ種類・同じ数字の建物をつなぐと、合計した数字になります。建物を選んで、つなぎたい相手を選びます。曲がるのは1回まで、相手の隣まで移動できればつながります。選び直すときは、地面や盤の外をクリック、右クリック、Esc。スマホは、相手を1回タップで確認、もう一度タップで決定です。</li>
+    <li>1つつなぐごとに新築が1件増えます。つなげる組み合わせがなくなったら Pass。Undo、Hint、Pass は、新築が1つ増えます。</li>
     <li>256を作ると「1」、512を作ると「1」「2」、1024を作ると「1」「2」「4」の建物が、盤面からまとめて消えます。1024は最大の建物で、それ以上は合体できません。</li>
     <li>できた建物の数字に応じて、点数が入ります。数字が1段階大きくなるごとに、1回の点数は4倍になります（2を作ると10点、4で40点、8で160点、16で640点…）。大きな建物を作るほど、点数が一気に増えます。</li>
-    <li>更地がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。スコアをタップすると内訳が見られます。データは1ターンごとに保存されるので、ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます（途中データはステージごとに保存されます）。</li>
+    <li>更地がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。データは1ターンごとに保存されるので、ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます。途中データはステージごとに保存されます。</li>
+    <li>5万点、20万点、50万点で、プレイできるステージが増えます。</li>
   </ul>`,
   },
   en: {
     undone: n=>`Move undone: +${n} new building${n>1?'s':''}`,
-    passed: n=>`Passed: +${n} new buildings`,
-    hint: (p,n)=>`Hint: ${p} possible merge${p>1?'s':''}. +${n} new buildings. Press OK to continue.`,
+    passed: n=>`Passed: +${n} new building${n>1?'s':''}`,
+    hint: (p,n)=>`Hint: ${p} possible merge${p>1?'s':''}. +${n} new building${n>1?'s':''}. Press OK to continue.`,
     hintNone: 'No merges available. Use Pass.',
-    stuck: n=>`No merges left. Press Pass to continue (+${n} new buildings).`,
+    stuck: n=>`No merges left. Press Pass to continue (+${n} new building${n>1?'s':''}).`,
     noPartner: 'No matching piece can reach this one right now',
     maxNote: v=>`${v} is the top level. It can't be merged any further`,
     maxAskTitle: '',
@@ -297,10 +298,11 @@ const TXT = {
     preRelease: "Registration isn't available before release",
     helpHtml: `<h4>Rules</h4><ul>
     <li>Connect buildings of the same type and number to add them up into one building with the total number. Pick a building, then pick its partner: they connect if you can reach a cell next to the partner along free roads and land, turning at most once. To deselect, click the ground or outside the board, right-click, or press Esc. On a phone, tap the partner once to preview and tap again to confirm.</li>
-    <li>Every merge adds one new building (the number of buildings stays the same). When no merges are left, use Pass. Undo, Hint and Pass add as many new buildings as the number on the button.</li>
+    <li>Every merge adds one new building. When no merges are left, use Pass. Undo, Hint and Pass each add one new building.</li>
     <li>Making a 256 erases all the 1s from the board; a 512 erases all the 1s and 2s; a 1024 erases all the 1s, 2s and 4s. 1024 is the biggest building and can't be merged any further.</li>
     <li>Each merge scores points based on the building you make. Every step up multiplies the points by 4 (making a 2 scores 10, a 4 scores 40, an 8 scores 160, a 16 scores 640…). The bigger the building, the more points you get.</li>
-    <li>When no empty land is left, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Tap the score to see the breakdown. Your progress is saved every turn, so you can close the browser, or return to the title screen with Save &amp; Exit, and resume later (saved separately for each stage).</li>
+    <li>When no empty land is left, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Your progress is saved every turn, so you can close the browser, or return to the title screen with Save &amp; Exit, and resume later. Progress is saved separately for each stage.</li>
+    <li>More stages become playable at 50,000, 200,000 and 500,000 points.</li>
   </ul>`,
   },
 };
@@ -399,10 +401,10 @@ const MAPS = {
     ]
   },
 };
-// ---- 進行状況: 最初は通天閣だけ。1ゲームで5万点で大阪駅、合計20万点で天保山、合計50万点で難波が追加される ----
+// ---- 進行状況: 最初は通天閣だけ。合計5万点で大阪駅、合計20万点で天保山、合計50万点で難波が追加される ----
 //   条件は UNLOCK に  id:{best:1ゲームの点数, text:'…'}  か  id:{total:合計点, text:'…'}  で書く(?dev=1 で全ステージを開放)
 const UNLOCK = {
-  osakastation: {best:50000,  text:'Reach 50,000 points in one game'},
+  osakastation: {total:50000, text:'Earn 50,000 points in total'},
   tempozan:     {total:200000, text:'Earn 200,000 points in total'},
   namba:        {total:500000, text:'Earn 500,000 points in total'},
 };
@@ -434,7 +436,7 @@ const TW = 64, TH = 32;       // タイル幅/高さ (2:1 のアイソメトリ�
 const INIT_RATE = 0.6;        // 初期の建物の割合(中央寄りに配置)
 // 新築のルール: 合体で駒が1つ消えるたびに、新築を1件(= 駒の数は変わらない)。新築できる更地がなくなったらゲームオーバー
 // パスとヒントのペナルティ(新築の追加件数)
-const PASS_SITES = 2;
+const PASS_SITES = 1;
 const HINT_SITES = 1;
 const UNDO_SITES = 1;
 const LV_PROB = [.45,.35,.20]; // 新築が1,2,3段階目になる確率       // 初期配置率
@@ -1996,8 +1998,46 @@ function drawTrainCar(t){
   ctx.restore();
 }
 
+// ---- 渡り鳥(白・はばたかない): 2分に1回くらい、5〜10羽が、画面の左下から右上へ、斜めの列になって飛んでいく(画面の上に描く。操作のじゃまはしない) ----
+const BIRDS={flock:null, next:0};
+function spawnBirds(now){
+  const W=innerWidth, H=innerHeight, n=5+Math.floor(Math.random()*6);
+  const y0=H*(.72+Math.random()*.3), x0=-70, slope=.5+Math.random()*.25;     // 左下の外から、右上へ(傾き 27〜37度くらい)
+  const ang=Math.atan(slope), ux=Math.cos(ang), uy=-Math.sin(ang);
+  const sz=Math.max(3,Math.min(W,H)*.0065), gap=Math.max(7,Math.min(W,H)*.015);     // sz: 鳥の絵の半分の大きさ(絵全体は 2×sz) / gap: 列の間隔
+  const birds=[];
+  for(let i=0;i<n;i++){                                   // V字の列: 先頭が一番前で、あとの鳥は、左右に交互にならんで、後ろへ
+    const k=Math.ceil(i/2), side=i%2?1:-1;
+    birds.push({back:k*gap*2.1+Math.random()*gap*.4, lat:side*k*gap*1.5+(Math.random()-.5)*gap*.5, ph:Math.random()*6.28, f:.9+Math.random()*.25, sc:.85+Math.random()*.3});
+  }
+  BIRDS.flock={t0:now, x0, y0, ux, uy, sp:Math.max(W,H)*.04, sz, birds, W, H};
+}
+function drawBirds(now){
+  if(PREVIEW) return;
+  if(!BIRDS.next) BIRDS.next=now+(40+Math.random()*50)*1000;          // 最初は、開いて40〜90秒あと
+  if(!BIRDS.flock && now>=BIRDS.next) spawnBirds(now);
+  const F=BIRDS.flock; if(!F) return;
+  const t=(now-F.t0)/1000, d=t*F.sp, W=innerWidth, H=innerHeight;
+  const lx=F.x0+F.ux*d, ly=F.y0+F.uy*d;                           // 先頭の位置
+  if(lx-F.sz*14>W+40 || ly<-F.sz*14-40){ BIRDS.flock=null; BIRDS.next=now+(80+Math.random()*50)*1000; return; }     // 全部、画面の外へ出たら終わり。次は、80〜130秒あと(飛んでいる時間と合わせて、2分に1回くらい)
+  ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.shadowColor='rgba(30,70,120,.35)'; ctx.shadowBlur=2; ctx.shadowOffsetY=1;     // 白い鳥。空に溶けないように、ごく薄い影
+  for(const b of F.birds){
+    // 斜め上45度から見るので、列(V字)も、鳥も、地面の上の向きで決めてから、縦を0.7倍につぶして画面に出す
+    const SQ=.7, hx=F.ux, hy=F.uy/SQ, hl=Math.hypot(hx,hy), fx=hx/hl, fy=hy/hl, lx2=-fy, ly2=fx;
+    const gx=-fx*b.back+lx2*b.lat, gy=-fy*b.back+ly2*b.lat;                  // 先頭からの、地面の上のずれ
+    const x=lx+gx, y=ly+gy*SQ+Math.sin(t*.9+b.ph)*F.sz*.25;
+    const u=F.sz*b.sc*.385; ctx.fillStyle='#fff';     // 鳥の大きさ(前の7割)
+    // トンビのシルエット: 翼は大きく、ふちはなめらか。翼を少し上げて(後ろから見るとVの字)、からだは小さく、尾は短い
+    const P=(f,l)=>[x+(fx*f+lx2*l)*u, y+(fy*f+ly2*l)*u*SQ-Math.abs(l)*.2*u];      // 翼の先ほど、少し高く(上へ)
+    const poly2=pts=>{ ctx.beginPath(); ctx.moveTo(...P(...pts[0])); for(let i=1;i<pts.length;i++) ctx.lineTo(...P(...pts[i])); ctx.closePath(); ctx.fill(); };
+    for(const sd of [1,-1])
+      poly2([[.5,.25*sd],[.62,1.2*sd],[.55,2.1*sd],[.48,2.8*sd],[.32,3.05*sd],[-.35,3.05*sd],[-.5,2.8*sd],[-.62,2.1*sd],[-.8,1.2*sd],[-.85,.3*sd]]);      // 翼(先は細くせず、台形ぎみ)
+    poly2([[.8,0],[.35,.3],[-.8,.26],[-1.15,.4],[-1.3,0],[-1.15,-.4],[-.8,-.26],[.35,-.3]]);        // からだと、短い尾
+  }
+  ctx.restore();
+}
 function frame(now){
-  const dt=Math.min(.05,(now-(frame.last||now))/1000); frame.last=now;
+  const dt=Math.max(0,Math.min(.05,(now-(frame.last||now))/1000)); frame.last=now;     // 時間が戻っても(0未満でも)、車などが逆走して外へ出ないように、0以上にする
   updateCars(dt); updateSites(now); updateTrain(dt); updateBoat(dt); updateAmbience(now);
   layout();
   ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
@@ -2216,6 +2256,7 @@ function frame(now){
     ctx.strokeText(e.txt,cx,cy-heightOf(8)-20-t*30); ctx.fillText(e.txt,cx,cy-heightOf(8)-20-t*30);
   }
   if(over && !PREVIEW) drawCelebration(now); else if(FW.on) resetCelebration();      // クリア後: 花火と光の粒
+  drawBirds(now);                                                // 渡り鳥(たまに、左下から右上へ)
   // 移動アニメ更新
   if(mover){
     const t=Math.min(1,(now-mover.t0)/mover.dur), steps=mover.path.length-1;
@@ -2896,9 +2937,8 @@ function fitHud(){                                  // 上のバーが1行に収
   if(h.scrollWidth>h.clientWidth+1){ h.classList.add('tight'); setHudLabels(true);
     if(h.scrollWidth>h.clientWidth+1) h.classList.add('tighter'); }       // それでも収まらないときは、文字もさらに小さく
 }
-function setHudLabels(tight){                       // 詰めた表示では、「Undo」と「(+1)」の間の空きを、なくす
-  const sp=tight?'':' ';
-  $('undoBtn').textContent=`Undo${sp}(+${UNDO_SITES})`; $('passBtn').textContent=`Pass${sp}(+${PASS_SITES})`; $('hintBtn').textContent=`Hint${sp}(+${HINT_SITES})`;
+function setHudLabels(tight){                       // ボタンの文字は、Undo / Hint / Pass だけ(ペナルティは、全部+1なので、ヘルプに書く)
+  $('undoBtn').textContent='Undo'; $('passBtn').textContent='Pass'; $('hintBtn').textContent='Hint';
 }
 setHudLabels(false);
 addEventListener('resize',fitHud); addEventListener('orientationchange',()=>setTimeout(fitHud,200));
