@@ -323,6 +323,24 @@ function setLang(l){
 // ---- マップ定義 (x:左→右, y:上→下) ----
 // . 更地(建物を置ける)  r 道  W 運河  R 線路  S 駅  T ゴンドラ乗り場
 const MAPS = {
+  tsutenkaku: {
+    title: 'Tsutenkaku', short: 'Tsutenkaku',
+    previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
+    train: null,
+    // (元の絵を反時計回りに90度回したもの)
+    // J 通天閣: ランドマーク(建物は建たず、駒も通れない)
+    rows: [
+      'rrrrrrrrr',
+      'r....r..r',
+      'rrrr.rrrr',
+      'r..rrr..r',
+      'rrrrJrrrr',
+      'r..rrr..r',
+      'rrrr.r..r',
+      'r....r..r',
+      'rrrrrrrrr'
+    ]
+  },
   osakastation: {
     title: 'Osaka Station', short: 'Station',
     previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
@@ -343,43 +361,6 @@ const MAPS = {
       '.r...r...'
     ]
   },
-  namba: {
-    title: 'Namba', short: 'Namba',
-    previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
-    train: null,
-    // (元の絵を時計回りに90度回したもの。グリコサインは、道頓堀川(右)に向く)
-    // L グリコサイン / E 道頓堀大観覧車(えびすタワー): ランドマーク(建物は建たず、駒も通れない)
-    // s 商店街(駒は通れない道。道頓堀川の上は橋になる) / a 屋根のあるアーケード(同じく通れない)
-    rows: [
-      'rrrrrrrrr',
-      '.r..s.W.s',
-      '.r..sLW.s',
-      'araasssss',
-      '.r..s.W.s',
-      '.rrrs.WEs',
-      '.r..s.W.s',
-      'araasssss',
-      '.r..s.W.s'
-    ]
-  },
-  tsutenkaku: {
-    title: 'Tsutenkaku', short: 'Tsutenkaku',
-    previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
-    train: null,
-    // (元の絵を反時計回りに90度回したもの)
-    // J 通天閣: ランドマーク(建物は建たず、駒も通れない)
-    rows: [
-      'rrrrrrrrr',
-      'r....r..r',
-      'rrrr.rrrr',
-      'r..rrr..r',
-      'rrrrJrrrr',
-      'r..rrr..r',
-      'rrrr.r..r',
-      'r....r..r',
-      'rrrrrrrrr'
-    ]
-  },
   tempozan: {
     title: 'Tempozan', short: 'Tempozan',
     previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
@@ -398,6 +379,25 @@ const MAPS = {
       'W.rrrrr.W',
       'WK..r...W',
       'WWW.r.WWW'
+    ]
+  },
+  namba: {
+    title: 'Namba', short: 'Namba',
+    previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
+    train: null,
+    // (元の絵を時計回りに90度回したもの。グリコサインは、道頓堀川(右)に向く)
+    // L グリコサイン / E 道頓堀大観覧車(えびすタワー): ランドマーク(建物は建たず、駒も通れない)
+    // s 商店街(駒は通れない道。道頓堀川の上は橋になる) / a 屋根のあるアーケード(同じく通れない)
+    rows: [
+      'rrrrrrrrr',
+      '.r..s.W.s',
+      '.r..sLW.s',
+      'araasssss',
+      '.r..s.W.s',
+      '.rrrs.WEs',
+      '.r..s.W.s',
+      'araasssss',
+      '.r..s.W.s'
     ]
   },
 };
@@ -641,7 +641,7 @@ anims = new Map();
 // ================= ルール =================
 const inb = (x,y) => x>=0 && y>=0 && x<N && y<N;
 // 駒が通れるのは 白・道・橋 のみ(運河・線路・駅は不可)
-const walkable = t => t===LAND||t===ROAD||t===BRIDGE;
+const walkable = t => t===LAND||t===ROAD||t===BRIDGE||t===SHOP||t===SBRIDGE;     // 屋根のない商店街(SHOP / 橋になったSBRIDGE)も、駒は通れる。屋根のある所(ARC)だけ通れない
 const free = (x,y) => inb(x,y) && grid[y][x]===0 && walkable(terrain[y][x]) && !sites.has(y*N+x);
 
 // (ax,ay)の駒が「0回か1回曲がって」止まれるセル -> そこまでの経路(自分の位置も含む)
@@ -1998,17 +1998,17 @@ function drawTrainCar(t){
   ctx.restore();
 }
 
-// ---- 渡り鳥(白・はばたかない): 2分に1回くらい、5〜10羽が、画面の左下から右上へ、斜めの列になって飛んでいく(画面の上に描く。操作のじゃまはしない) ----
+// ---- 渡り鳥(白・はばたかない): 2分に1回くらい、5〜8羽が、画面の左下から右上へ、斜めの列になって飛んでいく(画面の上に描く。操作のじゃまはしない) ----
 const BIRDS={flock:null, next:0};
 function spawnBirds(now){
-  const W=innerWidth, H=innerHeight, n=5+Math.floor(Math.random()*6);
+  const W=innerWidth, H=innerHeight, n=5+Math.floor(Math.random()*4);
   const y0=H*(.72+Math.random()*.3), x0=-70, slope=.5+Math.random()*.25;     // 左下の外から、右上へ(傾き 27〜37度くらい)
   const ang=Math.atan(slope), ux=Math.cos(ang), uy=-Math.sin(ang);
   const sz=Math.max(3,Math.min(W,H)*.0065), gap=Math.max(7,Math.min(W,H)*.015);     // sz: 鳥の絵の半分の大きさ(絵全体は 2×sz) / gap: 列の間隔
   const birds=[];
   for(let i=0;i<n;i++){                                   // V字の列: 先頭が一番前で、あとの鳥は、左右に交互にならんで、後ろへ
     const k=Math.ceil(i/2), side=i%2?1:-1;
-    birds.push({back:k*gap*2.1+Math.random()*gap*.4, lat:side*k*gap*1.5+(Math.random()-.5)*gap*.5, ph:Math.random()*6.28, f:.9+Math.random()*.25, sc:.85+Math.random()*.3});
+    birds.push({back:k*gap*2.1+Math.random()*gap*.4, lat:side*k*gap*1.5+(Math.random()-.5)*gap*.5, ph:Math.random()*6.28, f:.9+Math.random()*.25, sc:.85+Math.random()*.3, bf:.5+Math.random()*.6, ba:.5+Math.random()*.7});
   }
   BIRDS.flock={t0:now, x0, y0, ux, uy, sp:Math.max(W,H)*.04, sz, birds, W, H};
 }
@@ -2025,14 +2025,13 @@ function drawBirds(now){
     // 斜め上45度から見るので、列(V字)も、鳥も、地面の上の向きで決めてから、縦を0.7倍につぶして画面に出す
     const SQ=.7, hx=F.ux, hy=F.uy/SQ, hl=Math.hypot(hx,hy), fx=hx/hl, fy=hy/hl, lx2=-fy, ly2=fx;
     const gx=-fx*b.back+lx2*b.lat, gy=-fy*b.back+ly2*b.lat;                  // 先頭からの、地面の上のずれ
-    const x=lx+gx, y=ly+gy*SQ+Math.sin(t*.9+b.ph)*F.sz*.25;
+    const x=lx+gx, y=ly+gy*SQ+Math.sin(t*b.bf+b.ph)*F.sz*b.ba;     // ゆっくりした上下の動き(1羽ごとに、周期と幅がちがう)
     const u=F.sz*b.sc*.385; ctx.fillStyle='#fff';     // 鳥の大きさ(前の7割)
     // トンビのシルエット: 翼は大きく、ふちはなめらか。翼を少し上げて(後ろから見るとVの字)、からだは小さく、尾は短い
     const P=(f,l)=>[x+(fx*f+lx2*l)*u, y+(fy*f+ly2*l)*u*SQ-Math.abs(l)*.2*u];      // 翼の先ほど、少し高く(上へ)
     const poly2=pts=>{ ctx.beginPath(); ctx.moveTo(...P(...pts[0])); for(let i=1;i<pts.length;i++) ctx.lineTo(...P(...pts[i])); ctx.closePath(); ctx.fill(); };
-    for(const sd of [1,-1])
-      poly2([[.5,.25*sd],[.62,1.2*sd],[.55,2.1*sd],[.48,2.8*sd],[.32,3.05*sd],[-.35,3.05*sd],[-.5,2.8*sd],[-.62,2.1*sd],[-.8,1.2*sd],[-.85,.3*sd]]);      // 翼(先は細くせず、台形ぎみ)
-    poly2([[.8,0],[.35,.3],[-.8,.26],[-1.15,.4],[-1.3,0],[-1.15,-.4],[-.8,-.26],[.35,-.3]]);        // からだと、短い尾
+    const half=[[.8,0],[.5,.3],[.62,1.2],[.55,2.1],[.48,2.8],[.32,3.05],[-.35,3.05],[-.5,2.8],[-.62,2.1],[-.8,1.2],[-.85,.45],[-1.15,.4],[-1.3,0]];     // 右半分(頭の先 → 翼の先 → 尾の先)
+    poly2([...half, ...half.slice(1,-1).reverse().map(([f,l])=>[f,-l])]);        // 左半分は、折り返して、つなぐ。からだと翼を、継ぎ目のない1枚の形にする
   }
   ctx.restore();
 }
