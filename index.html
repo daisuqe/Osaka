@@ -274,7 +274,7 @@ const TXT = {
     <li>1つつなぐごとに新築が1件増えます。つなげる組み合わせがなくなったら Pass。Undo、Hint、Pass は、新築が1つ増えます。</li>
     <li>128を作ると「1」、256を作ると「2」以下、512を作ると「4」以下、1024を作ると「8」以下の建物が、盤面からまとめて消えます。1024は最大の建物で、それ以上は合体できません。</li>
     <li>できた建物の数字に応じて、点数が入ります。数字が1段階大きくなるごとに、1回の点数は4倍になります（2を作ると10点、4で40点、8で160点、16で640点…）。大きな建物を作るほど、点数が一気に増えます。</li>
-    <li>更地がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。データは1ターンごとに保存されるので、ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます。途中データはステージごとに保存されます。</li>
+    <li>建物を置ける場所がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。データは1ターンごとに保存されるので、ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます。途中データはステージごとに保存されます。</li>
     <li>5万点、20万点、50万点で、プレイできるステージが増えます。</li>
   </ul>`,
   },
@@ -308,7 +308,7 @@ const TXT = {
     <li>Every merge adds one new building. When no merges are left, use Pass. Undo, Hint and Pass each add one new building.</li>
     <li>Making a 128 erases all the 1s from the board; a 256 erases everything up to 2; a 512 up to 4; a 1024 up to 8. 1024 is the biggest building and can't be merged any further.</li>
     <li>Each merge scores points based on the building you make. Every step up multiplies the points by 4 (making a 2 scores 10, a 4 scores 40, an 8 scores 160, a 16 scores 640…). The bigger the building, the more points you get.</li>
-    <li>When no empty land is left, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Your progress is saved every turn, so you can close the browser, or return to the title screen with Save &amp; Exit, and resume later. Progress is saved separately for each stage.</li>
+    <li>When there is no place left to build, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Your progress is saved every turn, so you can close the browser, or return to the title screen with Save &amp; Exit, and resume later. Progress is saved separately for each stage.</li>
     <li>More stages become playable at 50,000, 200,000 and 500,000 points.</li>
   </ul>`,
   },
@@ -368,6 +368,25 @@ const MAPS = {
       '.r...r...'
     ]
   },
+  namba: {
+    title: 'Namba', short: 'Namba',
+    previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
+    train: null,
+    // (元の絵を時計回りに90度回したもの。グリコサインは、道頓堀川(右)に向く)
+    // L グリコサイン / E 道頓堀大観覧車(えびすタワー): ランドマーク(建物は建たず、駒も通れない)
+    // s 商店街(屋根なし。駒は通れる。道頓堀川の上は橋になる)。以前あった屋根のあるアーケード(a)と、その通行止めは、今のマップにはない
+    rows: [
+      'rrrrrrrrr',
+      '.r..s.W.s',
+      '.r..sLW.s',
+      'srsssssss',
+      '.r..s.W.s',
+      '.r..s.WEs',
+      '.r..s.W.s',
+      'srsssssss',
+      '.r..s.W.s'
+    ]
+  },
   tempozan: {
     title: 'Tempozan', short: 'Tempozan',
     previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
@@ -388,32 +407,13 @@ const MAPS = {
       'WWW.r.WWW'
     ]
   },
-  namba: {
-    title: 'Namba', short: 'Namba',
-    previewMix: [.25, .5, .25],    // タイトル画面の絵の建物の割合 [住宅,商業,自然]
-    train: null,
-    // (元の絵を時計回りに90度回したもの。グリコサインは、道頓堀川(右)に向く)
-    // L グリコサイン / E 道頓堀大観覧車(えびすタワー): ランドマーク(建物は建たず、駒も通れない)
-    // s 商店街(駒は通れない道。道頓堀川の上は橋になる) / a 屋根のあるアーケード(同じく通れない)
-    rows: [
-      'rrrrrrrrr',
-      '.r..s.W.s',
-      '.r..sLW.s',
-      'araasssss',
-      '.r..s.W.s',
-      '.rrrs.WEs',
-      '.r..s.W.s',
-      'araasssss',
-      '.r..s.W.s'
-    ]
-  },
 };
-// ---- 進行状況: 最初は通天閣だけ。合計5万点で大阪駅、合計20万点で天保山、合計50万点で難波が追加される ----
+// ---- 進行状況: 最初は通天閣だけ。合計5万点で大阪駅、合計20万点で難波、合計50万点で天保山が追加される ----
 //   条件は UNLOCK に  id:{best:1ゲームの点数, text:'…'}  か  id:{total:合計点, text:'…'}  で書く(?dev=1 で全ステージを開放)
 const UNLOCK = {
   osakastation: {total:50000, text:'Earn 50,000 points in total'},
-  tempozan:     {total:200000, text:'Earn 200,000 points in total'},
-  namba:        {total:500000, text:'Earn 500,000 points in total'},
+  namba:        {total:200000, text:'Earn 200,000 points in total'},
+  tempozan:     {total:500000, text:'Earn 500,000 points in total'},
 };
 const PROG_KEY = 'osaka-progress';
 let PROG = {total:0, best:0, unlocked:{}};
