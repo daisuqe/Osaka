@@ -51,6 +51,15 @@
   #menuBox h3{margin:0 0 6px;font-size:44px}
   #help{font-size:17px;line-height:1.55;max-width:560px} #help h4{margin:4px 0 6px;font-size:22px} #help ul{margin:0;padding-left:1.2em} #help li{margin-bottom:6px}
   #menuBox button{font-size:30px;padding:16px 24px;min-height:68px;border-radius:10px}
+  /* ダイアログの右上の「×」(ほかのボタンと同じ、塗りつぶしのボタン。「×」は2本の棒で描いて、中央にそろえる)。下の大きな Close ボタンは廃止。内容がスクロールしても、右上に残る */
+  #menuBox button.xClose,#panelBox button.xClose{position:sticky;top:6px;align-self:flex-end;flex:none;width:52px;height:48px;min-height:0;padding:0;margin:-12px -12px -48px 0;z-index:3;
+    border-radius:10px;background:#8fb0c0;color:transparent;font-size:0;box-shadow:0 2px 0 rgba(0,0,0,.28)}
+  #menuBox button.xClose::before,#panelBox button.xClose::before,#menuBox button.xClose::after,#panelBox button.xClose::after{      /* 「×」は、文字ではなく、2本の棒で描く(文字だと、上へずれるので、ぴったり中央にする) */
+    content:'';position:absolute;left:50%;top:50%;width:24px;height:4px;margin:-2px 0 0 -12px;background:#fff;border-radius:2px;transform:rotate(45deg)}
+  #menuBox button.xClose::after,#panelBox button.xClose::after{transform:rotate(-45deg)}
+  #menuBox button.xClose:active,#panelBox button.xClose:active{background:#7a99a9;transform:translateY(2px);box-shadow:none}
+  #menuBox h3{padding-right:52px}
+  #panelBox{display:flex;flex-direction:column}
   button:disabled{opacity:.35;cursor:default;filter:none}
   #passBtn.alert{background:#ff8a00;color:#fff;animation:passGlow 1s ease-in-out infinite}      /* Pass しか押せないとき: はっきりしたオレンジで点滅 */
   #hud #passBtn.alert{background:#ff8a00}
@@ -197,15 +206,14 @@
   <button class="sub" id="menuBtn">Menu</button>
   </div>
 </div>
-<div id="panel"><div id="panelBox"><div id="panelBody"></div><button id="panelClose">Close</button></div></div>
-<div id="menuPanel"><div id="menuBox"><h3>Menu</h3><button id="newBtn">Give Up</button>
+<div id="panel"><div id="panelBox"><button type="button" class="xClose" id="panelClose" aria-label="Close" title="Close">&times;</button><div id="panelBody"></div></div></div>
+<div id="menuPanel"><div id="menuBox"><button type="button" class="xClose" id="menuClose" aria-label="Close" title="Close">&times;</button><h3>Menu</h3><button id="newBtn">Give Up</button>
   <button class="sub" id="stageBtn">Save &amp; Exit</button>
   <div class="volRow"><label for="sfxVol">SFX</label><input type="range" id="sfxVol" min="0" max="100" step="5" value="50"><span id="sfxVolV">50%</span></div>
   <div class="volRow"><label for="musicVol">Music</label><input type="range" id="musicVol" min="0" max="100" step="5" value="50"><span id="musicVolV">50%</span></div>
   <div class="volRow langRow"><label>Language</label><button class="sub toggle on" id="langJa">Japanese</button><button class="sub toggle" id="langEn">English</button></div>
   <button class="sub" id="manualBtn">How to Play</button>
-  <div id="help" style="display:none"></div>
-  <button class="sub" id="menuClose">Close</button></div></div>
+  <div id="help" style="display:none"></div></div></div>
 <button id="hintOk">OK</button>
 <div id="appsPanel"><div id="appsBox" role="dialog" aria-modal="true"><div id="appsMsg"></div><div id="appsBtns"><button id="appsYes" type="button">Yes</button><button id="appsNo" type="button">No</button></div></div></div>
 <div id="confirmPanel"><div id="menuBox"><h3>Give Up?</h3><div id="confirmMsg"></div>
@@ -214,15 +222,14 @@
   <button id="queryYes">Yes</button><button class="sub" id="queryNo">No</button></div></div>
 <button id="doneBtn">Ranking &#9654;</button>
 <div id="stageSel"><button id="appsBtn" type="button" aria-label="App list"><canvas id="appsIcon" width="16" height="16"></canvas></button><h2>Osaka</h2><div id="stageWrap"><button id="stageL" class="stageArrow">&#9664;</button><div id="stageList"></div><button id="stageR" class="stageArrow">&#9654;</button></div><div id="titleBtns"><button id="titleRank">Ranking</button><button id="titleManual">How to Play</button></div><div id="copyright" role="button" tabindex="0" title="License">&copy; 2026 daisuqe. All rights reserved.</div></div>
-<div id="rankPanel"><div id="menuBox"><h3>Ranking</h3><div id="rankTabs"></div>
+<div id="rankPanel"><div id="menuBox"><button type="button" class="xClose" id="rankClose" aria-label="Close" title="Close">&times;</button><h3>Ranking</h3><div id="rankTabs"></div>
   <div id="rankMode"><button class="sub on" data-m="all">Global</button><button class="sub" data-m="me">Local</button></div>
   <div id="rankBody"></div>
-  <div id="rankNameRow">Name: <b id="rankNameText"></b> <button class="sub" id="rankNameBtn">Change</button></div>
-  <button class="sub" id="rankClose">Close</button></div></div>
+  <div id="rankNameRow">Name: <b id="rankNameText"></b> <button class="sub" id="rankNameBtn">Change</button></div></div></div>
 <div id="namePanel"><div id="menuBox"><h3>Your Name</h3><div id="nameMsg"></div>
   <input id="nameInput" maxlength="8" autocomplete="off" placeholder="Name"><button id="nameSave">Save</button><button class="sub" id="nameSkip">Skip</button></div></div>
-<div id="licensePanel"><div id="menuBox"><h3>License</h3><div id="licenseBody"></div><button class="sub" id="licenseClose">Close</button></div></div>
-<div id="manualPanel"><div id="menuBox"><h3>How to Play</h3><div id="manualBody"></div><button class="sub" id="manualClose">Close</button></div></div>
+<div id="licensePanel"><div id="menuBox"><button type="button" class="xClose" id="licenseClose" aria-label="Close" title="Close">&times;</button><h3>License</h3><div id="licenseBody"></div></div></div>
+<div id="manualPanel"><div id="menuBox"><button type="button" class="xClose" id="manualClose" aria-label="Close" title="Close">&times;</button><h3>How to Play</h3><div id="manualBody"></div></div></div>
 <div id="fxLayer"></div>
 <div id="fxBanner"></div>
 <div id="mapTitle"></div>
