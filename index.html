@@ -265,7 +265,7 @@ const TXT = {
     helpHtml: `<h4>遊び方</h4><ul>
     <li>同じ種類・同じ数字の建物をつなぐと、合計した数字になります。建物を選んで、つなぎたい相手を選びます。曲がるのは1回まで、相手の隣まで移動できればつながります。選び直すときは、地面や盤の外をクリック、右クリック、Esc。スマホは、相手を1回タップで確認、もう一度タップで決定です。</li>
     <li>1つつなぐごとに新築が1件増えます。つなげる組み合わせがなくなったら Pass。Undo、Hint、Pass は、新築が1つ増えます。</li>
-    <li>256を作ると「1」、512を作ると「1」「2」、1024を作ると「1」「2」「4」の建物が、盤面からまとめて消えます。1024は最大の建物で、それ以上は合体できません。</li>
+    <li>128を作ると「1」、256を作ると「2」以下、512を作ると「4」以下、1024を作ると「8」以下の建物が、盤面からまとめて消えます。1024は最大の建物で、それ以上は合体できません。</li>
     <li>できた建物の数字に応じて、点数が入ります。数字が1段階大きくなるごとに、1回の点数は4倍になります（2を作ると10点、4で40点、8で160点、16で640点…）。大きな建物を作るほど、点数が一気に増えます。</li>
     <li>更地がなくなると、街の完成です（ステージクリア）。右下の Ranking ボタンで、ランキングへ進みます。データは1ターンごとに保存されるので、ブラウザを閉じたり、Save &amp; Exit でトップ画面に戻っても、ゲームを再開できます。途中データはステージごとに保存されます。</li>
     <li>5万点、20万点、50万点で、プレイできるステージが増えます。</li>
@@ -299,7 +299,7 @@ const TXT = {
     helpHtml: `<h4>Rules</h4><ul>
     <li>Connect buildings of the same type and number to add them up into one building with the total number. Pick a building, then pick its partner: they connect if you can reach a cell next to the partner along free roads and land, turning at most once. To deselect, click the ground or outside the board, right-click, or press Esc. On a phone, tap the partner once to preview and tap again to confirm.</li>
     <li>Every merge adds one new building. When no merges are left, use Pass. Undo, Hint and Pass each add one new building.</li>
-    <li>Making a 256 erases all the 1s from the board; a 512 erases all the 1s and 2s; a 1024 erases all the 1s, 2s and 4s. 1024 is the biggest building and can't be merged any further.</li>
+    <li>Making a 128 erases all the 1s from the board; a 256 erases everything up to 2; a 512 up to 4; a 1024 up to 8. 1024 is the biggest building and can't be merged any further.</li>
     <li>Each merge scores points based on the building you make. Every step up multiplies the points by 4 (making a 2 scores 10, a 4 scores 40, an 8 scores 160, a 16 scores 640…). The bigger the building, the more points you get.</li>
     <li>When no empty land is left, your city is complete (Stage Clear). Press Ranking at the bottom right to go to the ranking. Your progress is saved every turn, so you can close the browser, or return to the title screen with Save &amp; Exit, and resume later. Progress is saved separately for each stage.</li>
     <li>More stages become playable at 50,000, 200,000 and 500,000 points.</li>
@@ -850,13 +850,13 @@ function updateSites(now){
     hud(); checkGameOver();
   }
 }
-// 256を作ると数字1、512を作ると1と2、1024(最大)を作ると1と2と4の建物が、全種類消えて更地になる。それより小さい合体では、何も消えない
+// 128を作ると数字1、256を作ると1と2、512を作ると1〜4、1024(最大)を作ると1〜8の建物が、全種類消えて更地になる。それより小さい合体では、何も消えない
 function clearLow(nv,b){
   const t=tierOf(nv); if(t<1) return;
   // 光の柱: 1+1の合体から出る。最初はごく低い白で、レベルが上がるごとに少しずつ高く・金色に、レベル8以上で最大 (lvは1〜3の連続値)
   const lv=1+2*Math.min(1,(t-1)/7), tn=performance.now();
   effects.push({type:'pillar', x:b[0], y:b[1], t:tn, lv, tint:KINDS[kind[b[1]][b[0]]].tint});
-  const maxV = nv>=1024 ? 4 : nv>=512 ? 2 : nv>=256 ? 1 : 0;      // 消える数字の上限(256: 1 / 512: 1,2 / 1024: 1,2,4)
+  const maxV = nv>=1024 ? 8 : nv>=512 ? 4 : nv>=256 ? 2 : nv>=128 ? 1 : 0;      // 消える数字の上限(128: 1 / 256: 1,2 / 512: 1,2,4 / 1024: 1,2,4,8)
   if(!maxV) return;
   const now=performance.now(), gone=new Set();
   for(let y=0;y<N;y++) for(let x=0;x<N;x++){
@@ -866,7 +866,7 @@ function clearLow(nv,b){
     gone.add(v);
     grid[y][x]=0; anims.delete(y*N+x);                  // 判定の上では、すぐ消える。絵は、ゴーストが、あとで消す
   }
-  const rule=[1,2,4].filter(n=>n<=maxV);                 // お知らせには、実際に消えた数字ではなく、この合体で消える数字(ルール)を、いつも出す
+  const rule=[1,2,4,8].filter(n=>n<=maxV);                 // お知らせには、実際に消えた数字ではなく、この合体で消える数字(ルール)を、いつも出す
   showClearToast(nv,rule); if(gone.size) sfxClear();
 }
 // ---- 小さい建物が消えるときの演出: 先に、赤い印と × で、何が消えるかを見せて、そのあと縮んで、土煙とともに消える ----
