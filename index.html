@@ -844,7 +844,7 @@ function askName(cb,warn){                            // ニックネームを�
 }
 function rankNotice(msg,cb){                          // 結果を、少しだけ見せてから、次へ進む
   if(!msg){ if(cb) cb(); return; }
-  banner('Ranking',msg,2400); setTimeout(()=>{ if(cb) cb(); },2300);
+  announce(2400, ()=>showBanner({ttl:'Ranking',sub:msg,ms:2400,conf:false}), ()=>{ hideBanner(); if(cb) cb(); });
 }
 async function postScore(name,cb){                    // 返事を待って、100位の点数・自分のベスト・順位を覚える(8秒で、あきらめる)
   const id=MAPID||'osakastation', ac=new AbortController(), tm=setTimeout(()=>ac.abort(),8000);
@@ -882,7 +882,7 @@ function recordGame(){
 }
 function checkGameOver(){
   if(sites.size) return;                           // 工事中は判定を待つ
-  if(boardFull){ if(!over){ recordGame(); banner('STAGE CLEAR!', `Level ${levelOf(bestValue)} &nbsp;-&nbsp; Score ${score.toLocaleString('en-US')}`, 6500, true); sfxFanfare(true); } over=true; stuck=false; hintMode=false; setMsg(tr('cleared',levelOf(bestValue),score)); }
+  if(boardFull){ if(!over){ recordGame(); banner('STAGE CLEAR!', `Level ${levelOf(bestValue)} &nbsp;-&nbsp; Score ${score.toLocaleString('en-US')}`, 6500, true, ()=>sfxFanfare(true)); } over=true; stuck=false; hintMode=false; setMsg(tr('cleared',levelOf(bestValue),score)); }
   else if(!anyMove()){ stuck=true; setMsg(tr('stuck',PASS_SITES)); }   // 詰み = ゲームオーバーではなくパスできる
   else stuck=false;
   hud();
@@ -916,7 +916,8 @@ function clearLow(nv,b){
     grid[y][x]=0; anims.delete(y*N+x);                  // 判定の上では、すぐ消える。絵は、ゴーストが、あとで消す
   }
   const rule=[1,2,4,8].filter(n=>n<=maxV);                 // お知らせには、実際に消えた数字ではなく、この合体で消える数字(ルール)を、いつも出す
-  showClearToast(nv,rule); if(gone.size) sfxClear();
+  announce(nv>=MAXV?4600:2400, ()=>showClearToast(nv,rule));      // 「○○ Built! / Block ○ Cleared」も、ほかの告知と重ならないように、順番に出す
+  if(gone.size) sfxClear();
 }
 // ---- 小さい建物が消えるときの演出: 先に、赤い印と × で、何が消えるかを見せて、そのあと縮んで、土煙とともに消える ----
 const ghosts=[];
@@ -968,10 +969,11 @@ function finishMove(){
   const pts=pointsFor(nv);
   const lvBefore=levelOf(bestValue);
   turns++; if(nv>bestValue) bestKind=k; bestValue=Math.max(bestValue,nv); score += pts; stats.pts[k]+=pts; stats.merges[k][tierOf(nv)]++;
-  trackScore(pts);
   const lvUp = levelOf(bestValue)>lvBefore;           // レベルアップ中は、工事音(カンカンカン)を鳴らさない
+  clearLow(nv,b);                                     // 1回の合体で、告知がいくつか出るときは、この順番: 「○○ Built!」(消える建物と同時) → LEVEL UP! → NEW STAGE!
   if(lvUp) levelUp(b[0],b[1],levelOf(bestValue),k,nv);
-  clearLow(nv,b); sfxMerge(tierOf(nv));
+  trackScore(pts);
+  sfxMerge(tierOf(nv));
   startSite(randKind(), null, lvUp);   // 新築は1件。種類は、直前に合体した種類とは無関係にランダム(住宅・商業・自然が同じ確率)
   hud();
   setMsg(`${KINDS[k].name}: ${nameOf(k,nv)}  +${pts.toLocaleString('en-US')}` );
@@ -979,11 +981,22 @@ function finishMove(){
 }
 
 // ---- 派手な通知: レベルアップ・ステージ開放 (バナー + 光の筋 + 紙吹雪 + ファンファーレ) ----
-const bannerQ=[]; let bannerBusy=false;
-function banner(ttl,sub,ms,conf){ bannerQ.push({ttl,sub,ms:ms||3400,conf:!!conf}); if(!bannerBusy) nextBanner(); }
-function nextBanner(){
-  const b=bannerQ.shift(); if(!b){ bannerBusy=false; return; }
-  bannerBusy=true;
+// 告知(バナー・「○○ Built!」・ランキングの知らせ)は、1つの待ち行列に入れて、前の告知が終わってから、次を出す(重ならないように)。
+//   announce(ms, run, end): 順番が来たら run() を実行して、ms ミリ秒あとに end() を実行して、次へ。音・カメラの動きも、run の中に入れて、告知と一緒に始める
+const annQ=[]; let annBusy=false;
+function announce(ms,run,end){ annQ.push({ms,run,end}); if(!annBusy) nextAnn(); }
+function nextAnn(){
+  const a=annQ.shift(); if(!a){ annBusy=false; return; }
+  annBusy=true;
+  try{ a.run(); }catch(_){}
+  setTimeout(()=>{ try{ if(a.end) a.end(); }catch(_){} nextAnn(); }, a.ms);
+}
+function banner(ttl,sub,ms,conf,pre){                  // pre: このバナーが出るときに、一緒に実行すること(音・カメラなど)
+  const b={ttl,sub,ms:ms||3400,conf:!!conf};
+  announce(b.ms, ()=>{ if(pre) pre(); showBanner(b); }, hideBanner);
+}
+function hideBanner(){ const el=$('fxBanner'), layer=$('fxLayer'); el.style.display='none'; el.innerHTML=''; layer.innerHTML=''; }
+function showBanner(b){
   const el=$('fxBanner'), layer=$('fxLayer');
   el.style.setProperty('--ms',b.ms+'ms'); layer.style.setProperty('--ms',b.ms+'ms');
   el.innerHTML=`<div class="ttl">${b.ttl}</div><div class="sub">${b.sub||''}</div>`; el.style.display='flex';
@@ -997,7 +1010,6 @@ function nextBanner(){
     c.style.width=(6+Math.random()*8)+'px'; c.style.height=(10+Math.random()*10)+'px';
     layer.appendChild(c);
   }
-  setTimeout(()=>{ el.style.display='none'; el.innerHTML=''; layer.innerHTML=''; nextBanner(); }, b.ms);
 }
 function sfxFanfare(big){                              // 上昇するアルペジオ + きらめき
   if(!AC||!soundOn) return;
@@ -1012,10 +1024,7 @@ function sfxFanfare(big){                              // 上昇するアルペ�
 function trackScore(pts){
   PROG.total+=pts; PROG.best=Math.max(PROG.best,score);
   const added=checkUnlocks(); saveProgress();
-  for(const id of added){
-    sfxFanfare(true);
-    banner('NEW STAGE!', tr('unlocked',MAPS[id].title), 4200, true);
-  }
+  for(const id of added) banner('NEW STAGE!', tr('unlocked',MAPS[id].title), 4200, true, ()=>sfxFanfare(true));
 }
 // ---- レベルアップ: その建物を画面の中央に大きく映して、派手に表示する ----
 const levelOf = v => Math.max(1, Math.round(Math.log2(v)));
@@ -1025,9 +1034,7 @@ function focusBuilding(x,y){
   camTween={t0:performance.now(), from:{...view}, to:{s:sc, tx:vp.W/2-wx*sc, ty:vp.top+vp.availH/2-(wy-22)*sc}, back:userView?{...userView}:null};
 }
 function levelUp(x,y,lv,k,nv){
-  effects.push({type:'lvburst', x, y, t:performance.now()});
-  focusBuilding(x,y); sfxFanfare(false);
-  banner('LEVEL UP!', `Level ${lv} &nbsp;-&nbsp; ${nameOf(k,nv)}`, 3300);
+  banner('LEVEL UP!', `Level ${lv} &nbsp;-&nbsp; ${nameOf(k,nv)}`, 3300, false, ()=>{ effects.push({type:'lvburst', x, y, t:performance.now()}); focusBuilding(x,y); sfxFanfare(false); });
 }
 
 // ================= 描画 =================
