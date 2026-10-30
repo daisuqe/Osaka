@@ -90,6 +90,7 @@
   #rankTabs{display:flex;gap:8px;flex-wrap:wrap} #rankTabs button{font-size:18px;min-height:40px;padding:6px 14px;border-radius:8px} #rankTabs button.on{background:#2e9d6a}
   #rankBody table{border-collapse:collapse;font-size:20px;width:100%;min-width:300px} #rankBody th,#rankBody td{padding:4px 10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.12);vertical-align:middle}
   #rankBody th{font-size:15px;opacity:.7;font-weight:600} #rankBody td:first-child,#rankBody th:first-child{text-align:center} #rankBody td img{width:44px;height:44px;image-rendering:pixelated;display:block;margin-left:auto}
+  #rankBody tr.me td{background:rgba(70,130,255,.28)}
   #rankBody tr.empty td{opacity:.35} #rankBody tr:nth-child(2) td:first-child{color:#ffd54a;font-weight:800}
   #titleManual{font-size:26px;min-height:50px;padding:10px 34px;margin-top:6px;background:none;box-shadow:none;color:#fff;text-shadow:0 2px 6px rgba(10,30,50,.7);letter-spacing:.04em}
   #titleManual:hover{text-decoration:underline;filter:none}
@@ -260,6 +261,10 @@ const TXT = {
     turnSub: '選択中の駒をもう一度押すと取り消し、同じ駒を選ぶとつながります。',
     notMatch: 'つなげられません。選択中の駒をもう一度押すと取り消し、同じ駒を選ぶとつながります。',
     cleared: (lv,sc)=>`おめでとうございます! 街が完成しました （レベル ${lv} ・ ${fmtN(sc)} 点）。右下のボタンでランキングへ。`,
+    rankCut: pt=>`ランキング100位（${fmtN(pt)} 点）に届かなかったので、登録しません`,
+    rankIn: n=>`ランキング ${n} 位になりました!`,
+    rankFast: 'しばらく待ってから、もう一度お試しください(ランキングに登録できませんでした)',
+    rankMany: 'この接続からは、これ以上の名前では登録できません',
     highScore: (sc,pv,t)=>`ハイスコア ${fmtN(sc)} 点です（前回 ${fmtN(pv)} 点）。\n${t} のランキングに再登録しますか?`,
     unlocked: t=>`${t} が解放されました`,
     rankFail: 'ランキングを読み込めませんでした。<br>しばらくしてからもう一度お試しください。',
@@ -294,6 +299,10 @@ const TXT = {
     turnSub: 'Tap the selected piece again to deselect, or pick a matching piece.',
     notMatch: "Can't connect. Tap the selected piece again to deselect, or pick a matching piece.",
     cleared: (lv,sc)=>`Congratulations! Your city is complete (Level ${lv} · ${fmtN(sc)} pts). Press Ranking at the bottom right.`,
+    rankCut: pt=>`Did not reach 100th place (${fmtN(pt)} pts), so it was not submitted`,
+    rankIn: n=>`You are #${n} in the ranking!`,
+    rankFast: 'Please wait a moment and try again (the score was not submitted)',
+    rankMany: 'No more names can be registered from this connection',
     highScore: (sc,pv,t)=>`New high score: ${fmtN(sc)} pts (previous: ${fmtN(pv)}).\nUpdate your ${t} ranking entry?`,
     unlocked: t=>`${t} unlocked`,
     rankFail: 'Could not load the ranking.<br>Please try again later.',
@@ -486,6 +495,7 @@ let bestValue = 1;       // ゲーム中に作った最大の建物の数字
 let bestKind = 1;        // その建物の種類(ランキングの絵に使う)
 let gameId = Date.now(); // 1ゲームごとのID(ランキングの登録を、同じゲームで重複させない)
 let turns = 0;           // 合体した回数
+let playMs = 0;          // 遊んだ時間(ミリ秒)。ランキングに登録するとき、手数とのつじつま合わせに使う
 let passLockUntil = 0;   // Pass をした後、この時刻(performance.now)までは Pass を押せない
 let stuck = false;       // 合体できる組み合わせがない(パスできる)
 let boardFull = false;  // 新築を置く更地がなくなった(= ゲームオーバー待ち)
@@ -550,7 +560,7 @@ function newGame(){
   const n = Math.round(cells.length*INIT_RATE);
   const kinds=Array.from({length:n},(_,i)=>i%KINDS.length); shuffle(kinds);   // 最初の種類の比率は均等(1個以内の差)
   for(let i=0;i<n;i++){ const [x,y]=cells[i]; grid[y][x]=randInit(); kind[y][x]=kinds[i]; anims.set(y*N+x,{t:performance.now()+i*4,type:'spawn'}); }
-  sites.clear(); fresh.clear(); undoStack.length=0; score=0; turns=0; bestValue=1; stats=newStats(); sel=null; targets=new Map(); preview=null; hintMode=false; hintPairs=null; mover=null; effects=[]; hover=null; over=false; boardFull=false; stuck=false;
+  sites.clear(); fresh.clear(); undoStack.length=0; score=0; turns=0; playMs=0; bestValue=1; stats=newStats(); sel=null; targets=new Map(); preview=null; hintMode=false; hintPairs=null; mover=null; effects=[]; hover=null; over=false; boardFull=false; stuck=false;
   bestValue = Math.max(1, ...grid.flat());   // 最初の盤面の最大の数字(1か2)
   gameId = Date.now(); bestKind = 1;
   for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(grid[y][x]===bestValue){ bestKind=kind[y][x]; }
@@ -583,7 +593,7 @@ function previewInit(){
     grid[c.y][c.x]=Math.pow(2,lv-1); kind[c.y][c.x]=k;
   });
   grid[cells[0].y][cells[0].x]=128;                          // 最高ランクは駅前の1つだけ
-  sites.clear(); fresh.clear(); undoStack.length=0; stats=newStats(); score=0; turns=0; bestValue=1;
+  sites.clear(); fresh.clear(); undoStack.length=0; stats=newStats(); score=0; turns=0; playMs=0; bestValue=1;
   sel=null; targets=new Map(); preview=null; hintMode=false; hintPairs=null; mover=null; effects=[]; hover=null; over=false; boardFull=false; stuck=false;
 }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } }
@@ -618,7 +628,7 @@ let saveOff=false;                                  // New Game で保存を消�
 function saveGame(){
   if(PREVIEW) return;                                          // プレビューは保存しない(本物のセーブを上書きしない)
   if(saveOff || mover || !grid) return;                       // 駒の移動中は保存しない(直前の保存が残る)
-  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({grid, kind, score, turns, bestValue, bestKind, gameId, stats, over, boardFull, stuck,
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({grid, kind, score, turns, playMs:Math.round(playMs), bestValue, bestKind, gameId, stats, over, boardFull, stuck,
     sites:[...sites.values()].map(({x,y,k,v})=>({x,y,k,v})), undo:undoStack.slice(-50)})); }catch(_){}
 }
 function loadGame(){
@@ -626,7 +636,7 @@ function loadGame(){
     const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
     if(!d || d.grid.length!==N || d.grid[0].length!==N) return false;
     for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(d.grid[y][x] && terrain[y][x]!==LAND) return false;   // マップの形が変わった古いセーブ(駒が道や水の上)は使わない
-    grid=d.grid; kind=d.kind; score=d.score; turns=d.turns; bestValue=Math.max(d.bestValue||1,...d.grid.flat());   // 保存データに最大(1024以上)が既にあれば、小さい建物を消さないルールも、すぐに反映される
+    grid=d.grid; kind=d.kind; score=d.score; turns=d.turns; playMs=d.playMs!=null?d.playMs:d.turns*2000; bestValue=Math.max(d.bestValue||1,...d.grid.flat());   // 保存データに最大(1024以上)が既にあれば、小さい建物を消さないルールも、すぐに反映される
      stats=d.stats; gameId=d.gameId||Date.now();
     bestKind = d.bestKind!=null ? d.bestKind : (()=>{ let k=1; for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(d.grid[y][x]===d.bestValue) k=d.kind[y][x]; return k; })();
     fresh.clear(); sites.clear(); const now=performance.now(); for(const st of d.sites) sites.set(siteKey(st.x,st.y),{...st,t0:now});
@@ -809,29 +819,60 @@ const TEST_NAME=null;                          // リリース前のテスト: �
 const nameAllowed = n => !TEST_NAME || String(n||'').toUpperCase()===TEST_NAME;
 function getUid(){ let u=''; try{ u=localStorage.getItem(UID_KEY)||''; if(!u){ u=Math.random().toString(36).slice(2,10); localStorage.setItem(UID_KEY,u); } }catch(_){ u='anon'; } return u; }
 function playerName(){ try{ return (localStorage.getItem(NAME_KEY)||'').slice(0,8); }catch(_){ return ''; } }
-const LBBEST_KEY='osaka-lbbest';                    // ステージごとに、みんなのランキングへ登録済みのハイスコア
-function lbBest(){ try{ return JSON.parse(localStorage.getItem(LBBEST_KEY)||'{}')||{}; }catch(_){ return {}; } }
+// ---- 通信をできるだけ減らすための、ブラウザ内の記憶(localStorage: ステージごとに、順位表・100位の点数・自分のベスト) ----
+//   順位表は、1分に1回までしか読み込まない(リロードしても、1分以内なら同じ内容)。自分が記録を更新したときは、すぐ読み直す。
+//   100位の点数以下の得点は、100位に届かないので、サーバーへ送らない。自分のベスト以下の得点も、送らない。
+const RK_KEY='osaka-rk', RK_LIST_MS=60000, RK_CUT_MS=30*60000, RK_BEST_MS=6*3600000;
+let rkMem=null;
+const rkAll=()=>{ if(!rkMem){ try{ rkMem=JSON.parse(localStorage.getItem(RK_KEY)||'{}')||{}; }catch(_){ rkMem={}; } } return rkMem; };
+const rkGet=id=>rkAll()[id]||{};
+function rkSet(id,patch){ const a=rkAll(); a[id]={...(a[id]||{}),...patch}; try{ localStorage.setItem(RK_KEY,JSON.stringify(a)); }catch(_){} }
+const rkCutoff=id=>{ const r=rkGet(id); return r.ct && Date.now()-r.ct<RK_CUT_MS ? (r.cutoff||0) : 0; };                       // 100位の点数(分からないときは 0)
+const rkBest=id=>{ const r=rkGet(id); return r.bt && Date.now()-r.bt<RK_BEST_MS && String(r.bn||'').toLowerCase()===playerName().toLowerCase() ? (r.best||0) : 0; };     // 今の名前の、自分のベスト
+async function fetchTop(id,force){                      // そのステージの上位100人(1人1件)
+  const c=rkGet(id);
+  if(!force && c.list && c.lt && Date.now()-c.lt<RK_LIST_MS) return c.list;
+  const r=await fetch(`${LB2_URL}?stage=${encodeURIComponent(id)}`,{cache:'no-store'});
+  if(!r.ok) throw new Error('http '+r.status);
+  const d=await r.json(), list=Array.isArray(d)?d:(d.scores||[]);
+  if(!Array.isArray(list)) throw new Error('bad');
+  rkSet(id,{list:list.slice(0,100),lt:Date.now(),cutoff:Array.isArray(d)?(list.length>=100?list[99].score:0):(d.cutoff||0),ct:Date.now()});
+  return list;
+}
 function askName(cb,warn){                            // ニックネームを聞く(最大8文字)。一度入れたら覚える。warn: 登録できない名前だったとき、その理由を出す
   $('nameInput').value=playerName(); nameDone=cb; $('nameMsg').textContent=tr(warn?'preRelease':'nameMsg'); $('namePanel').style.display='flex'; setTimeout(()=>$('nameInput').focus(),50);
 }
-function postScore(name){                             // 返事は待たない(ページを離れても届くよう keepalive)
-  const body=JSON.stringify({stage:MAPID||'osakastation', name, score:lastEntry.s, level:lastEntry.lv, id:getUid()});
-  for(const u of LB_URLS) fetch(u,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},body}).catch(()=>{});     // 書き込みはCloudflare(LB2_URL)だけ。読み込みだけ、Googleも合わせる
-  const B=lbBest(); B[MAPID||'osakastation']={s:lastEntry.s,lv:lastEntry.lv}; try{ localStorage.setItem(LBBEST_KEY,JSON.stringify(B)); }catch(_){}
+function rankNotice(msg,cb){                          // 結果を、少しだけ見せてから、次へ進む
+  if(!msg){ if(cb) cb(); return; }
+  banner('Ranking',msg,2400); setTimeout(()=>{ if(cb) cb(); },2300);
+}
+async function postScore(name,cb){                    // 返事を待って、100位の点数・自分のベスト・順位を覚える(8秒で、あきらめる)
+  const id=MAPID||'osakastation', ac=new AbortController(), tm=setTimeout(()=>ac.abort(),8000);
+  try{
+    const r=await fetch(LB2_URL,{method:'POST',headers:{'Content-Type':'application/json'},signal:ac.signal,body:JSON.stringify({stage:id,name,score:lastEntry.s,level:lastEntry.lv,turns:lastEntry.tn,duration:lastEntry.pm})});
+    clearTimeout(tm);
+    const d=await r.json().catch(()=>({}));
+    if(d.error==='below_cutoff'){ rkSet(id,{cutoff:d.cutoff||0,ct:Date.now()}); rankNotice(tr('rankCut',d.cutoff||0),cb); return; }     // 100位に届かない: サーバーが返した100位の点数を覚える
+    if(!r.ok || !d.ok){ rankNotice(d.error==='too_fast'?tr('rankFast'):d.error==='too_many'?tr('rankMany'):'',cb); return; }       // 続けての登録・同じ接続からの別名: 理由を伝える。そのほかは、黙って進む
+    rkSet(id,{cutoff:d.cutoff||0,ct:Date.now(),best:d.best,bn:name,bt:Date.now(),...(d.updated?{lt:0}:{})});      // 自分のベストと100位の点数を覚える。記録が更新されたら、順位表を、すぐ読み直す
+    rankNotice(d.updated?tr('rankIn',d.rank):'',cb);
+  }catch(_){ clearTimeout(tm); if(cb) cb(); }
 }
 function shareScore(done){                            // 今のゲームの成績を、みんなのランキングへ送る。1人1ステージ1件で、自己ベストを超えたときだけ(2回目以降は確認する)
+  const id=MAPID||'osakastation';
   if(!LB_URLS.length || PREVIEW || !lastEntry){ if(done) done(); return; }
-  const prev=lbBest()[MAPID||'osakastation'];
-  if(prev && lastEntry.s<=prev.s){ if(done) done(); return; }
-  const go=()=>{ const n=playerName(); if(n && nameAllowed(n)) postScore(n); if(done) done(); };        // 登録できない名前は、送らない
+  const sc=lastEntry.s, best=rkBest(id), cut=rkCutoff(id);
+  if(sc<=best){ if(done) done(); return; }                                          // 自分のベストを超えていない: 送らない
+  if(!best && cut>0 && sc<=cut){ rankNotice(tr('rankCut',cut),done); return; }       // 100位に届かない: 送らずに、そのことを伝える
+  const go=()=>{ const n=playerName(); if(n && nameAllowed(n)) postScore(n,done); else if(done) done(); };        // 登録できない名前は、送らない
   const send=()=>{ const n=playerName(); if(!n && !nameSkipped) askName(go); else if(n && !nameAllowed(n) && !nameSkipped) askName(go,true); else go(); };
-  if(prev) askQuery('High Score!',tr('highScore',lastEntry.s,prev.s,MAPS[MAPID||'osakastation'].title),send,()=>{ if(done) done(); });
+  if(best) askQuery('High Score!',tr('highScore',sc,best,MAPS[id].title),send,()=>{ if(done) done(); });
   else send();
 }
 function recordGame(){
   if(PREVIEW || !(turns>0 || score>0)) return;
   const R=loadRank(), id=MAPID||'osakastation', list=R[id]||[];
-  const entry={id:gameId, s:score, lv:levelOf(bestValue), k:bestKind, v:bestValue, t:Date.now()};
+  const entry={id:gameId, s:score, lv:levelOf(bestValue), k:bestKind, v:bestValue, t:Date.now(), tn:turns, pm:Math.round(playMs)};
   lastEntry=entry;
   const i=list.findIndex(e=>e.id===gameId);
   if(i>=0) list[i]=entry; else list.push(entry);
@@ -2044,7 +2085,8 @@ function drawBirds(now){
   ctx.restore();
 }
 function frame(now){
-  const dt=Math.max(0,Math.min(.05,(now-(frame.last||now))/1000)); frame.last=now;     // 時間が戻っても(0未満でも)、車などが逆走して外へ出ないように、0以上にする
+  const rawDt=now-(frame.last||now), dt=Math.max(0,Math.min(.05,rawDt/1000)); frame.last=now;     // 時間が戻っても(0未満でも)、車などが逆走して外へ出ないように、0以上にする
+  if(!over && !PREVIEW) playMs+=Math.max(0,Math.min(1000,rawDt));     // 遊んだ時間は、実際に経った時間(動きが遅い端末でも、正しく数える。1回の抜けは1秒まで)
   updateCars(dt); updateSites(now); updateTrain(dt); updateBoat(dt); updateAmbience(now);
   layout();
   ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
@@ -2959,7 +3001,7 @@ $('queryYes').onclick = () => { $('queryPanel').style.display='none'; const f=qu
 $('doneBtn').onclick = () => {                           // クリア後: 名前が未登録なら聞いて、ハイスコアなら共有してから、そのステージのランキングへ
   $('doneBtn').disabled=true;
   recordGame();
-  const posted=()=>{ const wait=(LB_URLS.length && lastEntry && playerName()) ? 1000 : 0;       // 送信が済むのを少し待つ(すぐ読み込むと、自分の記録が出ない)
+  const posted=()=>{ const wait=0;       // 送信の返事は、shareScore の中で待つので、ここでは待たない
     setTimeout(()=>{
       try{ localStorage.removeItem(SAVE_KEY); }catch(_){}
       window.removeEventListener('pagehide', saveGame); saveOff=true;
@@ -3025,19 +3067,7 @@ addEventListener('keydown', e => {                    // 開いている間は�
 }, true);
 $('titleManual').onclick = () => { $('manualBody').innerHTML=$('help').innerHTML; $('manualPanel').style.display='flex'; };
 let rankStage='osakastation', rankMode='all', rankToken=0;
-const lbCache={};
-async function loadGlobal(id){                         // みんなの上位(キャッシュは30秒)
-  const c=lbCache[id]; if(c && Date.now()-c.t<30000) return c.rows;
-  const got=await Promise.allSettled(LB_URLS.map(async u=>{ const r=await fetch(`${u}?stage=${encodeURIComponent(id)}&t=${Date.now()}`); if(!r.ok) throw new Error(r.status); const a=await r.json(); if(!Array.isArray(a)) throw new Error('bad'); return a; }));
-  const ok=got.filter(g=>g.status==='fulfilled');
-  if(!ok.length) throw new Error('rank load failed');                                  // 全部だめなときだけ、読み込めなかった表示にする
-  // 2か所の記録を1つにする。同じ名前は、同じ人とみなして、いちばん高い1件だけを出す
-  const best=new Map();
-  for(const e of ok.flatMap(g=>g.value)){ const b=best.get(e.name); if(!b || e.score>b.score || (e.score===b.score && e.level>b.level)) best.set(e.name,e); }
-  const rows=[...best.values()];
-  rows.sort((a,b)=>b.score-a.score||b.level-a.level); rows.length=Math.min(rows.length,RANK_MAX);
-  lbCache[id]={t:Date.now(),rows}; return rows;
-}
+async function loadGlobal(id){ return (await fetchTop(id)).slice(0,RANK_MAX); }      // みんなの上位100人(1分は、記憶している内容を使う)
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rankIds = () => Object.keys(MAPS).filter(isUnlocked);       // 未開放のステージは出さない
 const rankWide = () => rankIds().length>1 && innerWidth>=rankIds().length*400+120;      // 全ステージが横に収まる幅(1ステージ約400px)のときだけ並べる。入らなければ、タブで1つずつ
@@ -3045,7 +3075,8 @@ function rankTable(id){                                  // 1ステージ分の�
   const msg=t=>`<table><tr><td style="text-align:center;opacity:.7">${t}</td></tr></table>`;
   if(LB_URLS.length && rankMode==='all'){
     return loadGlobal(id).then(rows=>{
-      let h=''; for(let i=0;i<Math.min(rows.length,RANK_MAX);i++){ const e=rows[i]; h += `<tr><td>${i+1}</td><td class="nm">${esc(e.name)}</td><td>${e.level}</td><td>${Number(e.score).toLocaleString('en-US')}</td></tr>`; }
+      let h=''; const me=playerName().toLowerCase();
+      for(let i=0;i<Math.min(rows.length,RANK_MAX);i++){ const e=rows[i]; h += `<tr${me && String(e.name).toLowerCase()===me?' class="me"':''}><td>${i+1}</td><td class="nm">${esc(e.name)}</td><td>${e.level}</td><td>${Number(e.score).toLocaleString('en-US')}</td></tr>`; }
       if(!h) return msg(tr('noRecords'));
       return `<table><tr><th>#</th><th class="nm">Name</th><th>Level</th><th>Score</th></tr>${h}</table>`;
     }).catch(()=>msg(tr('rankFail')));

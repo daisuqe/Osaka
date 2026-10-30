@@ -21,3 +21,5 @@ ranking_backup/
 HANDOFF.md
 cloudflare/.wrangler/
 .claude/
+# スコアの書き換え対策のしきい値(非公開)
+cloudflare/protect.js
