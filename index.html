@@ -264,6 +264,8 @@ const TXT = {
     rankCut: pt=>`ランキング100位（${fmtN(pt)} 点）に届かなかったので、登録しません`,
     rankIn: n=>`ランキング ${n} 位になりました!`,
     rankFast: 'しばらく待ってから、もう一度お試しください(ランキングに登録できませんでした)',
+    rankRetry: 'ランキングにつながりませんでした。次に開いたときに、もう一度送ります',
+    rankNg: 'ランキングに登録できませんでした',
     rankMany: 'この接続からは、これ以上の名前では登録できません',
     highScore: (sc,pv,t)=>`ハイスコア ${fmtN(sc)} 点です（前回 ${fmtN(pv)} 点）。\n${t} のランキングに再登録しますか?`,
     unlocked: t=>`${t} が解放されました`,
@@ -302,6 +304,8 @@ const TXT = {
     rankCut: pt=>`Did not reach 100th place (${fmtN(pt)} pts), so it was not submitted`,
     rankIn: n=>`You are #${n} in the ranking!`,
     rankFast: 'Please wait a moment and try again (the score was not submitted)',
+    rankRetry: 'Could not reach the ranking. The score will be sent again next time you open the game',
+    rankNg: 'The score could not be submitted',
     rankMany: 'No more names can be registered from this connection',
     highScore: (sc,pv,t)=>`New high score: ${fmtN(sc)} pts (previous: ${fmtN(pv)}).\nUpdate your ${t} ranking entry?`,
     unlocked: t=>`${t} unlocked`,
@@ -383,17 +387,17 @@ const MAPS = {
     train: null,
     // (元の絵を時計回りに90度回したもの。グリコサインは、道頓堀川(右)に向く)
     // L グリコサイン / E 道頓堀大観覧車(えびすタワー): ランドマーク(建物は建たず、駒も通れない)
-    // s 商店街(屋根なし。駒は通れる。道頓堀川の上は橋になる)。以前あった屋根のあるアーケード(a)と、その通行止めは、今のマップにはない
+    // s 商店街(屋根なし。駒は通れる。道頓堀川の上は橋になる) / a 屋根のあるアーケード(屋根は付くが、下は、駒が通れる。通行止めの看板はない)
     rows: [
       'rrrrrrrrr',
-      'r...s.W.s',
       'r...sLW.s',
-      'rssssssss',
+      'raaasssss',
       'r...s.W.s',
       'r...s.WEs',
-      'rssssssss',
+      'raaas.W.s',
+      'r...sssss',
       'r...s.W.s',
-      'rssssssss'
+      'raaasssss'
     ]
   },
   tempozan: {
@@ -468,7 +472,6 @@ const KINDS = [
    tiers:['Lawn','Bush','Hedge','Azalea','Small Tree','Flower Bed','Flower Bed & Bench','Tree','Small Park','Park','Grand Park','Forest Park','Botanical Garden']
   },
 ];
-const nameOf = (k,v) => { const t=KINDS[k].tiers; return t[Math.min(Math.round(Math.log2(v)),t.length-1)]; };
 // ---- 地形 ----
 
 const LAND=0, ROAD=1, WATER=2, BRIDGE=3, RAIL=4, STATION=5, GSTN=6, MTOWER=7, LMARK=8, HWY=9, HWYW=10, SHOP=11, SBRIDGE=12, ARC=13, VIA=14, VSTN=15, HKST=16;   // VIA: 高架の線路 / VSTN: 高架の駅(大阪駅) / HKST: 阪急の駅(大阪梅田)   // GSTN: ゴンドラの乗り場(道なし。建物は建たず、駒も通れない)
@@ -659,7 +662,7 @@ anims = new Map();
 // ================= ルール =================
 const inb = (x,y) => x>=0 && y>=0 && x<N && y<N;
 // 駒が通れるのは 白・道・橋 のみ(運河・線路・駅は不可)
-const walkable = t => t===LAND||t===ROAD||t===BRIDGE||t===SHOP||t===SBRIDGE;     // 屋根のない商店街(SHOP / 橋になったSBRIDGE)も、駒は通れる。屋根のある所(ARC)だけ通れない
+const walkable = t => t===LAND||t===ROAD||t===BRIDGE||t===SHOP||t===SBRIDGE||t===ARC;     // 商店街(SHOP / 橋になったSBRIDGE)は、駒が通れる。屋根のあるアーケード(ARC)も、下は通れる
 const free = (x,y) => inb(x,y) && grid[y][x]===0 && walkable(terrain[y][x]) && !sites.has(y*N+x);
 
 // (ax,ay)の駒が「0回か1回曲がって」止まれるセル -> そこまでの経路(自分の位置も含む)
@@ -846,18 +849,56 @@ function rankNotice(msg,cb){                          // 結果を、少しだ�
   if(!msg){ if(cb) cb(); return; }
   announce(2400, ()=>showBanner({ttl:'Ranking',sub:msg,ms:2400,conf:false}), ()=>{ hideBanner(); if(cb) cb(); });
 }
-async function postScore(name,cb){                    // 返事を待って、100位の点数・自分のベスト・順位を覚える(8秒で、あきらめる)
-  const id=MAPID||'osakastation', ac=new AbortController(), tm=setTimeout(()=>ac.abort(),8000);
+// 送れなかった成績(通信が切れていた・サーバーが応答しなかった)は、ブラウザに残して、次に開いたときに、もう一度送る
+//   サーバーが「登録しない」と、はっきり返したもの(100位に届かない・値がおかしい・名前が多すぎる)は、残さない
+const PEND_KEY='osaka-pending';
+function pendGet(){ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'[]')||[]; }catch(_){ return []; } }
+function pendSet(a){ try{ if(a.length) localStorage.setItem(PEND_KEY,JSON.stringify(a)); else localStorage.removeItem(PEND_KEY); }catch(_){} }
+function pendAdd(e){                                   // 同じステージ・同じ名前は、いちばん高い1件だけ残す
+  const a=pendGet().filter(x=>!(x.stage===e.stage && String(x.name).toLowerCase()===String(e.name).toLowerCase() && x.score<=e.score));
+  if(!a.some(x=>x.stage===e.stage && String(x.name).toLowerCase()===String(e.name).toLowerCase())) a.push(e);
+  pendSet(a);
+}
+function pendDrop(e){ pendSet(pendGet().filter(x=>!(x.stage===e.stage && String(x.name).toLowerCase()===String(e.name).toLowerCase() && x.score<=e.score))); }
+// 1件を送る。戻り値: {state:'ok'|'reject'|'retry', d, status}。retry = 通信できなかった/サーバーの不調(あとで、もう一度)
+async function sendEntry(e){
+  const ac=new AbortController(), tm=setTimeout(()=>ac.abort(),8000);
   try{
-    const r=await fetch(LB2_URL,{method:'POST',headers:{'Content-Type':'application/json'},signal:ac.signal,body:JSON.stringify({stage:id,name,score:lastEntry.s,level:lastEntry.lv,turns:lastEntry.tn,duration:lastEntry.pm})});
+    const r=await fetch(LB2_URL,{method:'POST',headers:{'Content-Type':'application/json'},signal:ac.signal,body:JSON.stringify(e)});
     clearTimeout(tm);
     const d=await r.json().catch(()=>({}));
-    if(d.error==='below_cutoff'){ rkSet(id,{cutoff:d.cutoff||0,ct:Date.now()}); rankNotice(tr('rankCut',d.cutoff||0),cb); return; }     // 100位に届かない: サーバーが返した100位の点数を覚える
-    if(!r.ok || !d.ok){ rankNotice(d.error==='too_fast'?tr('rankFast'):d.error==='too_many'?tr('rankMany'):'',cb); return; }       // 続けての登録・同じ接続からの別名: 理由を伝える。そのほかは、黙って進む
-    rkSet(id,{cutoff:d.cutoff||0,ct:Date.now(),best:d.best,bn:name,bt:Date.now(),...(d.updated?{lt:0}:{})});      // 自分のベストと100位の点数を覚える。記録が更新されたら、順位表を、すぐ読み直す
-    rankNotice(d.updated?tr('rankIn',d.rank):'',cb);
-  }catch(_){ clearTimeout(tm); if(cb) cb(); }
+    if(r.ok && d.ok) return {state:'ok',d};
+    if(r.status>=500 || r.status===429 || d.error==='too_fast' || d.error==='unavailable') return {state:'retry',d,status:r.status};
+    return {state:'reject',d,status:r.status};
+  }catch(_){ clearTimeout(tm); return {state:'retry',d:{}}; }
 }
+function rememberResult(e,d){                          // サーバーの返事から、100位の点数・自分のベスト・順位表の古さを覚える
+  rkSet(e.stage,{cutoff:d.cutoff||0,ct:Date.now(),best:d.best,bn:e.name,bt:Date.now(),...(d.updated?{lt:0}:{})});
+}
+async function postScore(name,cb){                    // 返事を待って、100位の点数・自分のベスト・順位を覚える。送れなかったときは、そのことを伝えて、成績を残す
+  const id=MAPID||'osakastation';
+  const e={stage:id,name,score:lastEntry.s,level:lastEntry.lv,turns:lastEntry.tn,duration:lastEntry.pm};
+  const res=await sendEntry(e), d=res.d||{};
+  if(res.state==='ok'){ rememberResult(e,d); pendDrop(e); rankNotice(d.updated?tr('rankIn',d.rank):'',cb); return; }
+  if(d.error==='below_cutoff'){ rkSet(id,{cutoff:d.cutoff||0,ct:Date.now()}); rankNotice(tr('rankCut',d.cutoff||0),cb); return; }     // 100位に届かない: サーバーが返した100位の点数を覚える
+  if(res.state==='retry'){ pendAdd(e); rankNotice(tr('rankRetry'),cb); return; }                                                      // 通信できなかった: 残して、次に開いたときに、もう一度送る
+  rankNotice(d.error==='too_many'?tr('rankMany'):tr('rankNg'),cb);                                                                    // サーバーが断った(値がおかしい・名前が多すぎる)
+}
+let pendBusy=false;
+async function retryPending(){                         // 開いたときに、送れていなかった成績があれば、もう一度送る
+  if(pendBusy || PREVIEW || !LB_URLS.length) return;
+  const list=pendGet(); if(!list.length) return;
+  pendBusy=true;
+  for(const e of list){
+    const res=await sendEntry(e), d=res.d||{};
+    if(res.state==='ok'){ rememberResult(e,d); pendDrop(e); if(d.updated) banner('Ranking',tr('rankIn',d.rank),2400); }
+    else if(res.state==='reject'){ if(d.error==='below_cutoff') rkSet(e.stage,{cutoff:d.cutoff||0,ct:Date.now()}); pendDrop(e); }
+    else break;                                        // まだ通信できない: あとで、また
+  }
+  pendBusy=false;
+}
+addEventListener('online',()=>{ retryPending(); });      // 通信が戻ったときも、送り直す
+
 function shareScore(done){                            // 今のゲームの成績を、みんなのランキングへ送る。1人1ステージ1件で、自己ベストを超えたときだけ(2回目以降は確認する)
   const id=MAPID||'osakastation';
   if(!LB_URLS.length || PREVIEW || !lastEntry){ if(done) done(); return; }
@@ -976,7 +1017,7 @@ function finishMove(){
   sfxMerge(tierOf(nv));
   startSite(randKind(), null, lvUp);   // 新築は1件。種類は、直前に合体した種類とは無関係にランダム(住宅・商業・自然が同じ確率)
   hud();
-  setMsg(`${KINDS[k].name}: ${nameOf(k,nv)}  +${pts.toLocaleString('en-US')}` );
+  setMsg(`${KINDS[k].name}  +${pts.toLocaleString('en-US')}` );      // 建物の名前(Mansion など)は、どこにも出さない
   checkGameOver();
 }
 
@@ -1034,7 +1075,7 @@ function focusBuilding(x,y){
   camTween={t0:performance.now(), from:{...view}, to:{s:sc, tx:vp.W/2-wx*sc, ty:vp.top+vp.availH/2-(wy-22)*sc}, back:userView?{...userView}:null};
 }
 function levelUp(x,y,lv,k,nv){
-  banner('LEVEL UP!', `Level ${lv} &nbsp;-&nbsp; ${nameOf(k,nv)}`, 3300, false, ()=>{ effects.push({type:'lvburst', x, y, t:performance.now()}); focusBuilding(x,y); sfxFanfare(false); });
+  banner('LEVEL UP!', `Level ${lv}`, 3300, false, ()=>{ effects.push({type:'lvburst', x, y, t:performance.now()}); focusBuilding(x,y); sfxFanfare(false); });
 }
 
 // ================= 描画 =================
@@ -1632,15 +1673,7 @@ let NOENTRY=null;
 function noEntrySigns(){
   if(NOENTRY) return NOENTRY;
   NOENTRY=[];
-  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
-    if(terrain[y][x]!==ARC) continue;
-    const ax=streetAxis(x,y), dirs=ax==='NS'?[[0,-1],[0,1]]:ax==='EW'?[[-1,0],[1,0]]:[[0,-1],[0,1],[-1,0],[1,0]];
-    for(const [dx,dy] of dirs){
-      if(!inb(x+dx,y+dy) || terrain[y+dy][x+dx]===ARC) continue;               // 屋根が続く側・盤面の外には置かない
-      NOENTRY.push({x,y,dx,dy,wx:x+.5+dx*.36,wy:y+.5+dy*.36});               // 屋根の端の、屋根の下
-    }
-  }
-  return NOENTRY;
+  return NOENTRY;                                       // 通行止めの看板は、出さない(アーケードの下も、駒は通れるので)
 }
 function drawNoEntry(g){
   const lx=g.dx?0:1, ly=g.dx?1:0, W=.15, V0=.085, V1=.04, ZB=2, ZT=11;          // 横の半幅、底と上の奥行きの半分、重りの高さ、スタンドの高さ
@@ -3243,6 +3276,7 @@ $('mapTitle').textContent = MAPDEF.title;
 function placeTitle(){ $('mapTitle').style.top = ($('hud').offsetHeight+6)+'px'; }
 addEventListener('resize', placeTitle); placeTitle();
 if(PREVIEW) previewInit(); else if(!loadGame()) newGame();
+setTimeout(retryPending,1500);                       // 前に送れなかった成績があれば、もう一度送る
 if(DEV && new URLSearchParams(location.search).get('demo')==='clear'){        // 確認用: 数字 1・2・4・8 の建物がいっぱいの盤面で、64 → 128 → 256 を作って、祝福と消える演出をくり返す
   let demoN=0;                                                              // 64 → 128 → 256 の順に、くり返す
   const demo=()=>{
