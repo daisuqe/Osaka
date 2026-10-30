@@ -796,15 +796,29 @@ function doMerge(a, b, path, confirmed){
 const sites = new Map();
 const fresh = new Set();                           // 工事直後で、次のターンまで柵を残すマス
 const siteKey = (x,y) => y*N+x;
-function startSite(k,avoid,quiet){                          // avoid: 新築を置かないマス(ヒントの経路など)のキーの集合
+function startSite(k,avoid,quiet,connect){                         // avoid: 新築を置かないマス(ヒントの経路など)のキーの集合
   let empt=[];
   for(let y=0;y<N;y++) for(let x=0;x<N;x++)
     if(!grid[y][x] && terrain[y][x]===LAND && !sites.has(siteKey(x,y))) empt.push([x,y]);
   if(!empt.length){ boardFull=true; return false; }      // 満タン
   if(avoid){ const f=empt.filter(([x,y])=>!avoid.has(y*N+x)); if(f.length) empt=f; }
   { const gh=new Set(ghosts.map(g=>g.y*N+g.x)), f=empt.filter(([x,y])=>!gh.has(y*N+x)); if(f.length) empt=f; }      // 消える演出の最中のセルには、新築を置かない
-  const [x,y]=empt[Math.random()*empt.length|0];
-  const v = randVal();
+  let [x,y]=empt[Math.random()*empt.length|0];
+  let v = randVal();
+  if(connect){                                           // 建った建物が、どこかの同じ建物と合体できる、種類・数字・場所を選ぶ(なければ、ふつうの新築)
+    const spots=(kk,vv)=>empt.filter(([cx,cy])=>{
+      const og=grid[cy][cx], ok=kind[cy][cx]; grid[cy][cx]=vv; kind[cy][cx]=kk;
+      const n=targetsOf(cx,cy).size; grid[cy][cx]=og; kind[cy][cx]=ok; return n>0;
+    });
+    let hit=null;
+    for(let i=0;i<12 && !hit;i++){ const kk=i?randKind():k, vv=i?randVal():v, s=spots(kk,vv); if(s.length) hit={k:kk,v:vv,s}; }     // まず、ふつうの確率で選んだ種類・数字で探す
+    if(!hit){                                            // だめなら、盤面にある建物と同じ(数字8まで)種類・数字を、すべて試す
+      const combos=[]; for(let k2=0;k2<KINDS.length;k2++) for(const v2 of [1,2,4,8]) combos.push([k2,v2]);
+      shuffle(combos);
+      for(const [kk,vv] of combos){ const s=spots(kk,vv); if(s.length){ hit={k:kk,v:vv,s}; break; } }
+    }
+    if(hit){ k=hit.k; v=hit.v; [x,y]=hit.s[Math.random()*hit.s.length|0]; }
+  }
   sites.set(siteKey(x,y), {x,y,k,v,t0:performance.now()});
   if(!quiet) sfxHammer();
   return true;
@@ -3227,7 +3241,7 @@ $('manualPanel').onclick = e => { if(e.target===$('manualPanel')) $('manualPanel
   list.addEventListener('scroll',upd,{passive:true}); addEventListener('resize',upd);
   requestAnimationFrame(upd); setTimeout(upd,300);
 })();
-function penalty(n,avoid){ for(let i=0;i<n;i++) startSite(randKind(),avoid); }
+function penalty(n,avoid,connect){ for(let i=0;i<n;i++) startSite(randKind(),avoid,false,connect); }
 // 新築を置ける空きマスの数(ゲームオーバーになるかの判定に使う)
 function freeCount(g,siteList){
   let c=0; for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(terrain[y][x]===LAND && !g[y][x] && !siteList.some(s=>s.x===x&&s.y===y)) c++;
@@ -3250,7 +3264,7 @@ function doPassNow(){
   fresh.clear(); undoStack.push(snapshot()); if(undoStack.length>200) undoStack.shift();
   deselect(); turns++; stuck=false;
   passLockUntil=performance.now()+5000; setTimeout(hud,5050);      // Pass の後の5秒間は、連続して押せない
-  penalty(PASS_SITES);
+  penalty(PASS_SITES,null,true);                       // Pass の新築は、どこかの建物と合体できる種類・数字にする(できないときは、ふつうの新築)
   hud(); setMsg(tr('passed',PASS_SITES));
   checkGameOver();
 }
