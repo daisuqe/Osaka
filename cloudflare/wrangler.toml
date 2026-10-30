@@ -2,8 +2,8 @@ name = "osaka-ranking"
 main = "worker.js"
 compatibility_date = "2026-01-01"
 
-# `wrangler d1 create osaka-ranking` で出る database_id を、下に貼る
+# osaka-ranking の database_id(秘密の情報ではありません)
 [[d1_databases]]
 binding = "DB"
 database_name = "osaka-ranking"
-database_id = "ここにdatabase_idを貼る"
+database_id = "a6ac731d-e43c-4406-9df3-c5b261dc5476"

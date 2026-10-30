@@ -419,7 +419,8 @@ const PROG_KEY = 'osaka-progress';
 let PROG = {total:0, best:0, unlocked:{}};
 try{ const d=JSON.parse(localStorage.getItem(PROG_KEY)||'null'); if(d) PROG={total:+d.total||0, best:+d.best||0, unlocked:d.unlocked||{}}; }catch(_){}
 const PREVIEW = new URLSearchParams(location.search).has('preview');   // タイトル画面のカード用: 保存せず、建物でいっぱいの盤面を1枚映す
-const DEV = new URLSearchParams(location.search).has('dev') || PREVIEW;     // ?dev=1 で全ステージを開放(確認用)
+const IS_LOCAL = location.protocol==='file:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);     // 自分のパソコンで開いているときだけ
+const DEV = PREVIEW || (IS_LOCAL && new URLSearchParams(location.search).has('dev'));     // ?dev=1 で全ステージを開放(確認用。公開しているページでは、効かない)
 const isUnlocked = id => !UNLOCK[id] || DEV || !!PROG.unlocked[id];
 function saveProgress(){ if(PREVIEW) return; try{ localStorage.setItem(PROG_KEY, JSON.stringify(PROG)); }catch(_){} }
 function checkUnlocks(){                             // 条件を満たしたステージを開放して、新しく開放したものを返す

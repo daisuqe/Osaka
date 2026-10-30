@@ -17,3 +17,7 @@ _*.jpg
 _*.png
 # ランキングのバックアップ(CSV)は、GitHubには上げない
 ranking_backup/
+# 公開しないもの: 引き継ぎメモ、Cloudflareのキャッシュ(アカウント情報)、エディタ用の設定
+HANDOFF.md
+cloudflare/.wrangler/
+.claude/
