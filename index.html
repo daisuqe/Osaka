@@ -612,10 +612,10 @@ function hud(){
   $('turns').textContent = turns;
   const landTotal = terrain.flat().filter(t=>t===LAND).length;      // 建物を置ける更地の数
   $('fill').textContent = Math.round((cnt+sites.size)/landTotal*100)+'%';   // 駒 + 工事中の更地
-  $('undoBtn').disabled = !undoStack.length || !!mover || hintMode;
-  $('hintBtn').disabled = (stuck && !sites.size) || over || hintMode;
+  $('undoBtn').disabled = !undoStack.length || !!mover || hintMode || !!sites.size;     // 工事中(新築予定地がある間)は、Undo・Hint・Pass を押せない(新築が同時に2つにならないように)
+  $('hintBtn').disabled = stuck || over || hintMode || !!sites.size;
   const passLocked = performance.now()<passLockUntil;
-  $('passBtn').disabled = hintMode || passLocked;
+  $('passBtn').disabled = hintMode || passLocked || !!sites.size;
   $('hintOk').style.display = hintMode ? 'block' : 'none';
   $('passBtn').classList.toggle('alert', stuck && !over && !passLocked);
   for(const id of ['undoBtn','hintBtn','passBtn','menuBtn']) $(id).style.display = over && !PREVIEW ? 'none' : '';   // クリア後は、Labels 以外のボタンを消す
@@ -761,7 +761,7 @@ function snapshot(){
 }
 let hintMode=false, hintPairs=null;                                // Hint表示中: OKを押すまで駒の操作は不可
 function undo(){
-  if(over || mover || hintMode || !undoStack.length) return;
+  if(over || mover || hintMode || sites.size || !undoStack.length) return;
   const top=undoStack[undoStack.length-1];
   if(freeCount(top.grid,top.sites)<UNDO_SITES){ askGameOver('Undo',undoNow); return; }
   undoNow();
@@ -3256,7 +3256,7 @@ function askGameOver(what,ok){
   queryYes=ok; $('queryPanel').style.display='flex';
 }
 function doPass(){
-  if(mover||over||hintMode||performance.now()<passLockUntil) return;
+  if(mover||over||hintMode||sites.size||performance.now()<passLockUntil) return;
   if(freeCount(grid,[...sites.values()])<PASS_SITES){ askGameOver('Pass',doPassNow); return; }
   doPassNow();
 }
@@ -3270,7 +3270,7 @@ function doPassNow(){
 }
 $('passBtn').onclick = doPass;
 $('hintBtn').onclick = () => {
-  if(mover||over||hintMode) return;
+  if(mover||over||hintMode||sites.size) return;
   const m=anyMove(); if(!m){ setMsg(tr('hintNone')); return; }
   const doHint=()=>{
     const pairs=allMerges();                         // 合体できる、すべての組み合わせ
